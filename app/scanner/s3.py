@@ -4,6 +4,7 @@ import os
 from datetime import datetime, timezone
 from botocore.exceptions import ClientError
 from app.scanner.s3_rules import evaluate_bucket
+from app.reports.markdown_report import write_markdown_report
 
 import boto3
 from dotenv import load_dotenv
@@ -316,8 +317,12 @@ def main():
 
     report_path = write_report(report)
 
+    markdown_report_path = PROJECT_ROOT / REPORT_OUTPUT_DIR / "s3_scan_report.md"
+    write_markdown_report(report, markdown_report_path)
+
     print(f"Found {len(buckets)} S3 bucket(s).")
-    print(f"Report written to: {report_path}")
+    print(f"JSON report written to: {report_path}")
+    print(f"Markdown report written to: {markdown_report_path}")
 
 
 if __name__ == "__main__":
