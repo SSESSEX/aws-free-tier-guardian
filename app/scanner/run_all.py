@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from app.scanner.s3 import list_s3_buckets, build_summary as build_s3_summary
 from app.scanner.ec2 import list_ec2_instances, build_summary as build_ec2_summary
 from app.scanner.ebs import list_ebs_volumes, build_summary as build_ebs_summary
-
+from app.scanner.eip import list_elastic_ips, build_summary as build_eip_summary
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 ENV_PATH = PROJECT_ROOT / ".env"
@@ -72,6 +72,10 @@ def main():
     volumes = list_ebs_volumes(session)
     ebs_summary = build_ebs_summary(volumes)
 
+    print("Running Elastic IP scanner...")
+    addresses = list_elastic_ips(session)
+    eip_summary = build_eip_summary(addresses)
+
     report = {
         "scan_time": datetime.now(timezone.utc).isoformat(),
         "aws_profile": AWS_PROFILE,
@@ -91,6 +95,11 @@ def main():
                 "volume_count": len(volumes),
                 "summary": ebs_summary,
                 "volumes": volumes
+            },
+            "eip": {
+                "elastic_ip_count": len(addresses),
+                "summary": eip_summary,
+                "elastic_ips": addresses
             }
         }
     }
