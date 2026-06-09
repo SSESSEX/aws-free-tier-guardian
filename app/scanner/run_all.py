@@ -10,6 +10,10 @@ from app.scanner.s3 import list_s3_buckets, build_summary as build_s3_summary
 from app.scanner.ec2 import list_ec2_instances, build_summary as build_ec2_summary
 from app.scanner.ebs import list_ebs_volumes, build_summary as build_ebs_summary
 from app.scanner.eip import list_elastic_ips, build_summary as build_eip_summary
+from app.scanner.security_group import (
+    list_security_groups,
+    build_summary as build_security_group_summary,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 ENV_PATH = PROJECT_ROOT / ".env"
@@ -76,6 +80,10 @@ def main():
     addresses = list_elastic_ips(session)
     eip_summary = build_eip_summary(addresses)
 
+    print("Running Security Group scanner...")
+    security_groups = list_security_groups(session)
+    security_group_summary = build_security_group_summary(security_groups)
+
     report = {
         "scan_time": datetime.now(timezone.utc).isoformat(),
         "aws_profile": AWS_PROFILE,
@@ -100,7 +108,12 @@ def main():
                 "elastic_ip_count": len(addresses),
                 "summary": eip_summary,
                 "elastic_ips": addresses
-            }
+            },
+            "security_groups": {
+                "security_group_count": len(security_groups),
+                "summary": security_group_summary,
+                "security_groups": security_groups,
+}
         }
     }
 
