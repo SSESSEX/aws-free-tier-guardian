@@ -124,6 +124,8 @@ def main():
     print(f"EC2 instances found: {len(instances)}")
     print(f"EBS volumes found: {len(volumes)}")
     print(f"Combined report written to: {report_path}")
+    print(f"Elastic IPs found: {len(addresses)}")
+    print(f"Security groups found: {len(security_groups)}")
 
 
 if __name__ == "__main__":
