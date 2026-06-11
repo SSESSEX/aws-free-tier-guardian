@@ -13,5 +13,17 @@ services:
       - guardian_postgres_data:/var/lib/postgresql/data
       - ./app/storage/schema.sql:/docker-entrypoint-initdb.d/001_schema.sql:ro
 
+  scanner:
+    build: .
+    container_name: guardian-scanner
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://guardian_user:guardian_local_password@postgres:5432/guardian
+    depends_on:
+      - postgres
+    volumes:
+      - ./reports:/app/reports
+      - ~/.aws:/root/.aws:ro
 volumes:
   guardian_postgres_data:
