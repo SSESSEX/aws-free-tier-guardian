@@ -12,10 +12,10 @@ from app.scanner.security_group_rules import evaluate_security_group
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 ENV_PATH = PROJECT_ROOT / ".env"
 
-if not ENV_PATH.exists():
+if ENV_PATH.exists():
+    load_dotenv(dotenv_path=ENV_PATH)
+elif not os.getenv("AWS_PROFILE"):
     print(f"Warning: .env file not found at {ENV_PATH}. Using fallback defaults.")
-
-load_dotenv(dotenv_path=ENV_PATH)
 
 
 AWS_PROFILE = os.getenv("AWS_PROFILE", "guardian-dev")
