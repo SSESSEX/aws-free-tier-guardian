@@ -2,6 +2,7 @@ from pathlib import Path
 import json
 import os
 from datetime import datetime, timezone
+import argparse
 
 import boto3
 from dotenv import load_dotenv
@@ -50,8 +51,23 @@ def write_report(data):
 
     return report_path
 
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Run AWS Free-Tier Guardian scanners."
+    )
+
+    parser.add_argument(
+        "--write-db",
+        action="store_true",
+        help="Persist scan results to PostgreSQL.",
+    )
+
+    return parser.parse_args()
+
 
 def main():
+    args = parse_args()
+
     print("Starting AWS Free-Tier Guardian scan...")
     print(f"Loaded .env from: {ENV_PATH}")
     print(f"AWS profile: {AWS_PROFILE}")
@@ -119,7 +135,12 @@ def main():
     }
 
     report_path = write_report(report)
-    scan_run_id = save_report_to_postgres(report)
+    scan_run_id = None
+
+    if args.write_db:
+        from app.storage.postgres_writer import save_report_to_postgres
+
+        scan_run_id = save_report_to_postgres(report)
 
     print("Scan complete.")
     print(f"S3 buckets found: {len(buckets)}")
@@ -129,7 +150,11 @@ def main():
     print(f"Elastic IPs found: {len(addresses)}")
     print(f"Security groups found: {len(security_groups)}")
     print(f"Combined report written to: {report_path}")
-    print(f"Scan saved to PostgreSQL with scan_run_id: {scan_run_id}")
+    
+    if scan_run_id is not None:
+        print(f"Scan saved to PostgreSQL with scan_run_id: {scan_run_id}")
+    else:
+        print("PostgreSQL save skipped. Use --write-db to persist results.")
 
 
 if __name__ == "__main__":
