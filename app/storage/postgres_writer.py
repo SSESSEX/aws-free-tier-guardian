@@ -182,4 +182,15 @@ def save_report_to_postgres(report: dict[str, Any]) -> int:
                 region=region,
             )
 
+            if "cloudwatch_logs" in services:
+                save_resource_collection(
+                    cursor=cursor,
+                    scan_run_id=scan_run_id,
+                    service="cloudwatch_logs",
+                    resource_type="log_group",
+                    resources=services["cloudwatch_logs"].get("log_groups", []),
+                    id_field="name",
+                    region=region,
+                )
+
             return scan_run_id

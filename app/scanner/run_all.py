@@ -17,6 +17,11 @@ from app.scanner.security_group import (
     build_summary as build_security_group_summary,
 )
 
+from app.scanner.cloudwatch_logs import (
+    list_log_groups,
+    build_summary as build_cloudwatch_logs_summary,
+)
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 ENV_PATH = PROJECT_ROOT / ".env"
 
@@ -101,6 +106,10 @@ def main():
     security_groups = list_security_groups(session)
     security_group_summary = build_security_group_summary(security_groups)
 
+    print("Running CloudWatch Logs scanner...")
+    log_groups = list_log_groups(session)
+    cloudwatch_logs_summary = build_cloudwatch_logs_summary(log_groups)
+
     report = {
         "scan_time": datetime.now(timezone.utc).isoformat(),
         "aws_profile": AWS_PROFILE,
@@ -130,7 +139,12 @@ def main():
                 "security_group_count": len(security_groups),
                 "summary": security_group_summary,
                 "security_groups": security_groups,
-}
+            },
+            "cloudwatch_logs": {
+                "log_group_count": len(log_groups),
+                "summary": cloudwatch_logs_summary,
+                "log_groups": log_groups,
+            }
         }
     }
 
@@ -148,6 +162,7 @@ def main():
     print(f"EBS volumes found: {len(volumes)}")
     print(f"Elastic IPs found: {len(addresses)}")
     print(f"Security groups found: {len(security_groups)}")
+    print(f"CloudWatch log groups found: {len(log_groups)}")
     print(f"Combined report written to: {report_path}")
     
     if scan_run_id is not None:
