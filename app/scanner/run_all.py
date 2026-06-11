@@ -10,6 +10,7 @@ from app.scanner.s3 import list_s3_buckets, build_summary as build_s3_summary
 from app.scanner.ec2 import list_ec2_instances, build_summary as build_ec2_summary
 from app.scanner.ebs import list_ebs_volumes, build_summary as build_ebs_summary
 from app.scanner.eip import list_elastic_ips, build_summary as build_eip_summary
+from app.storage.postgres_writer import save_report_to_postgres
 from app.scanner.security_group import (
     list_security_groups,
     build_summary as build_security_group_summary,
@@ -118,6 +119,7 @@ def main():
     }
 
     report_path = write_report(report)
+    scan_run_id = save_report_to_postgres(report)
 
     print("Scan complete.")
     print(f"S3 buckets found: {len(buckets)}")
@@ -126,6 +128,8 @@ def main():
     print(f"Combined report written to: {report_path}")
     print(f"Elastic IPs found: {len(addresses)}")
     print(f"Security groups found: {len(security_groups)}")
+    print(f"Combined report written to: {report_path}")
+    print(f"Scan saved to PostgreSQL with scan_run_id: {scan_run_id}")
 
 
 if __name__ == "__main__":
