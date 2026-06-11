@@ -22,6 +22,11 @@ from app.scanner.cloudwatch_logs import (
     build_summary as build_cloudwatch_logs_summary,
 )
 
+from app.scanner.iam_access_keys import (
+    list_iam_access_keys,
+    build_summary as build_iam_access_keys_summary,
+)
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 ENV_PATH = PROJECT_ROOT / ".env"
 
@@ -110,6 +115,10 @@ def main():
     log_groups = list_log_groups(session)
     cloudwatch_logs_summary = build_cloudwatch_logs_summary(log_groups)
 
+    print("Running IAM Access Key scanner...")
+    access_keys = list_iam_access_keys(session)
+    iam_access_keys_summary = build_iam_access_keys_summary(access_keys)
+
     report = {
         "scan_time": datetime.now(timezone.utc).isoformat(),
         "aws_profile": AWS_PROFILE,
@@ -144,6 +153,11 @@ def main():
                 "log_group_count": len(log_groups),
                 "summary": cloudwatch_logs_summary,
                 "log_groups": log_groups,
+            },
+            "iam_access_keys": {
+                "access_key_count": len(access_keys),
+                "summary": iam_access_keys_summary,
+                "access_keys": access_keys,
             }
         }
     }
@@ -163,6 +177,7 @@ def main():
     print(f"Elastic IPs found: {len(addresses)}")
     print(f"Security groups found: {len(security_groups)}")
     print(f"CloudWatch log groups found: {len(log_groups)}")
+    print(f"IAM access keys found: {len(access_keys)}")
     print(f"Combined report written to: {report_path}")
     
     if scan_run_id is not None:
