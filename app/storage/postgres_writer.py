@@ -193,4 +193,15 @@ def save_report_to_postgres(report: dict[str, Any]) -> int:
                     region=region,
                 )
 
+            if "iam_access_keys" in services:
+                save_resource_collection(
+                    cursor=cursor,
+                    scan_run_id=scan_run_id,
+                    service="iam_access_keys",
+                    resource_type="access_key",
+                    resources=services["iam_access_keys"].get("access_keys", []),
+                    id_field="masked_access_key_id",
+                    region="global",
+                )
+
             return scan_run_id
