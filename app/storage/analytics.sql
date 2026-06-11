@@ -1,3 +1,7 @@
+-- ============================================================
+-- AWS Free-Tier Guardian Analytics Queries
+-- ============================================================
+
 -- Latest scan runs
 SELECT
     id,
@@ -10,78 +14,61 @@ ORDER BY id DESC
 LIMIT 10;
 
 
--- Resource count by service
+-- Latest scan resource count by service
+WITH latest_scan AS (
+    SELECT MAX(id) AS scan_run_id
+    FROM scan_runs
+)
 SELECT
-    sr.id AS scan_run_id,
     r.service,
     r.resource_type,
     COUNT(*) AS resource_count
 FROM resources r
-JOIN scan_runs sr
-    ON r.scan_run_id = sr.id
+JOIN latest_scan ls
+    ON r.scan_run_id = ls.scan_run_id
 GROUP BY
-    sr.id,
     r.service,
     r.resource_type
 ORDER BY
-    sr.id DESC,
-    r.service;
+    r.service,
+    r.resource_type;
 
 
--- Findings by severity
+-- Latest scan findings by status
+WITH latest_scan AS (
+    SELECT MAX(id) AS scan_run_id
+    FROM scan_runs
+)
 SELECT
-    sr.id AS scan_run_id,
-    f.severity,
-    COUNT(*) AS finding_count
-FROM findings f
-JOIN resources r
-    ON f.resource_id = r.id
-JOIN scan_runs sr
-    ON r.scan_run_id = sr.id
-GROUP BY
-    sr.id,
-    f.severity
-ORDER BY
-    sr.id DESC,
-    f.severity;
-
-
--- Findings by status
-SELECT
-    sr.id AS scan_run_id,
     f.status,
     COUNT(*) AS finding_count
 FROM findings f
 JOIN resources r
     ON f.resource_id = r.id
-JOIN scan_runs sr
-    ON r.scan_run_id = sr.id
+JOIN latest_scan ls
+    ON r.scan_run_id = ls.scan_run_id
 GROUP BY
-    sr.id,
     f.status
 ORDER BY
-    sr.id DESC,
     f.status;
 
 
--- Highest-risk findings
+-- Latest scan findings by severity
+WITH latest_scan AS (
+    SELECT MAX(id) AS scan_run_id
+    FROM scan_runs
+)
 SELECT
-    sr.id AS scan_run_id,
-    r.service,
-    r.resource_type,
-    r.resource_id,
-    f.check_name,
-    f.status,
     f.severity,
-    f.message
+    COUNT(*) AS finding_count
 FROM findings f
 JOIN resources r
     ON f.resource_id = r.id
-JOIN scan_runs sr
-    ON r.scan_run_id = sr.id
-WHERE f.status IN ('FAIL', 'WARN')
+JOIN latest_scan ls
+    ON r.scan_run_id = ls.scan_run_id
+GROUP BY
+    f.severity
 ORDER BY
-    sr.id DESC,
     CASE f.severity
         WHEN 'CRITICAL' THEN 1
         WHEN 'HIGH' THEN 2
@@ -91,9 +78,12 @@ ORDER BY
     END;
 
 
--- Resources missing recommended tags
+-- Latest scan highest-risk findings
+WITH latest_scan AS (
+    SELECT MAX(id) AS scan_run_id
+    FROM scan_runs
+)
 SELECT
-    sr.id AS scan_run_id,
     r.service,
     r.resource_type,
     r.resource_id,
@@ -104,17 +94,50 @@ SELECT
 FROM findings f
 JOIN resources r
     ON f.resource_id = r.id
-JOIN scan_runs sr
-    ON r.scan_run_id = sr.id
+JOIN latest_scan ls
+    ON r.scan_run_id = ls.scan_run_id
+WHERE f.status IN ('FAIL', 'WARN')
+ORDER BY
+    CASE f.severity
+        WHEN 'CRITICAL' THEN 1
+        WHEN 'HIGH' THEN 2
+        WHEN 'MEDIUM' THEN 3
+        WHEN 'LOW' THEN 4
+        ELSE 5
+    END,
+    r.service,
+    r.resource_id;
+
+
+-- Latest scan resources missing recommended tags
+WITH latest_scan AS (
+    SELECT MAX(id) AS scan_run_id
+    FROM scan_runs
+)
+SELECT
+    r.service,
+    r.resource_type,
+    r.resource_id,
+    f.status,
+    f.severity,
+    f.message
+FROM findings f
+JOIN resources r
+    ON f.resource_id = r.id
+JOIN latest_scan ls
+    ON r.scan_run_id = ls.scan_run_id
 WHERE f.check_name LIKE '%REQUIRED_TAGS%'
 ORDER BY
-    sr.id DESC,
-    r.service;
+    r.service,
+    r.resource_type;
 
 
--- Public exposure findings
+-- Latest scan public exposure findings
+WITH latest_scan AS (
+    SELECT MAX(id) AS scan_run_id
+    FROM scan_runs
+)
 SELECT
-    sr.id AS scan_run_id,
     r.service,
     r.resource_type,
     r.resource_id,
@@ -125,12 +148,38 @@ SELECT
 FROM findings f
 JOIN resources r
     ON f.resource_id = r.id
-JOIN scan_runs sr
-    ON r.scan_run_id = sr.id
+JOIN latest_scan ls
+    ON r.scan_run_id = ls.scan_run_id
 WHERE
     f.check_name ILIKE '%PUBLIC%'
     OR f.check_name ILIKE '%WORLD%'
     OR f.message ILIKE '%internet%'
 ORDER BY
+    CASE f.severity
+        WHEN 'CRITICAL' THEN 1
+        WHEN 'HIGH' THEN 2
+        WHEN 'MEDIUM' THEN 3
+        WHEN 'LOW' THEN 4
+        ELSE 5
+    END,
+    r.service;
+
+
+-- Finding trend across scan runs
+SELECT
+    sr.id AS scan_run_id,
+    sr.scan_time,
+    f.status,
+    COUNT(*) AS finding_count
+FROM findings f
+JOIN resources r
+    ON f.resource_id = r.id
+JOIN scan_runs sr
+    ON r.scan_run_id = sr.id
+GROUP BY
+    sr.id,
+    sr.scan_time,
+    f.status
+ORDER BY
     sr.id DESC,
-    f.severity;
+    f.status;
