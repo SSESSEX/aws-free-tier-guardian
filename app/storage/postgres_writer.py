@@ -204,4 +204,15 @@ def save_report_to_postgres(report: dict[str, Any]) -> int:
                     region="global",
                 )
 
+            if "cloudtrail" in services:
+                save_resource_collection(
+                    cursor=cursor,
+                    scan_run_id=scan_run_id,
+                    service="cloudtrail",
+                    resource_type="trail",
+                    resources=services["cloudtrail"].get("trails", []),
+                    id_field="trail_name",
+                    region="global",
+                )
+
             return scan_run_id

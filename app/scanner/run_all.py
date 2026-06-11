@@ -27,6 +27,11 @@ from app.scanner.iam_access_keys import (
     build_summary as build_iam_access_keys_summary,
 )
 
+from app.scanner.cloudtrail import (
+    list_cloudtrail_trails,
+    build_summary as build_cloudtrail_summary,
+)
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 ENV_PATH = PROJECT_ROOT / ".env"
 
@@ -119,6 +124,10 @@ def main():
     access_keys = list_iam_access_keys(session)
     iam_access_keys_summary = build_iam_access_keys_summary(access_keys)
 
+    print("Running CloudTrail scanner...")
+    cloudtrail_trails = list_cloudtrail_trails(session)
+    cloudtrail_summary = build_cloudtrail_summary(cloudtrail_trails)
+
     report = {
         "scan_time": datetime.now(timezone.utc).isoformat(),
         "aws_profile": AWS_PROFILE,
@@ -158,6 +167,11 @@ def main():
                 "access_key_count": len(access_keys),
                 "summary": iam_access_keys_summary,
                 "access_keys": access_keys,
+            },
+            "cloudtrail": {
+                "trail_count": len(cloudtrail_trails),
+                "summary": cloudtrail_summary,
+                "trails": cloudtrail_trails,
             }
         }
     }
@@ -178,6 +192,7 @@ def main():
     print(f"Security groups found: {len(security_groups)}")
     print(f"CloudWatch log groups found: {len(log_groups)}")
     print(f"IAM access keys found: {len(access_keys)}")
+    print(f"CloudTrail trails found: {len(cloudtrail_trails)}")
     print(f"Combined report written to: {report_path}")
     
     if scan_run_id is not None:
