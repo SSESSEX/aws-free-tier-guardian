@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: guardian-postgres
+  namespace: aws-guardian
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: guardian-postgres
+  template:
+    metadata:
+      labels:
+        app: guardian-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: guardian-postgres-secret
+                  key: POSTGRES_DB
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: guardian-postgres-secret
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: guardian-postgres-secret
+                  key: POSTGRES_PASSWORD
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+            - name: postgres-schema
+              mountPath: /docker-entrypoint-initdb.d/001_schema.sql
+              subPath: 001_schema.sql
+      volumes:
+        - name: postgres-data
+          persistentVolumeClaim:
+            claimName: guardian-postgres-pvc
+        - name: postgres-schema
+          configMap:
+            name: guardian-postgres-schema
