@@ -215,4 +215,15 @@ def save_report_to_postgres(report: dict[str, Any]) -> int:
                     region="global",
                 )
 
+            if "rds" in services:
+                save_resource_collection(
+                    cursor=cursor,
+                    scan_run_id=scan_run_id,
+                    service="rds",
+                    resource_type="db_instance",
+                    resources=services["rds"].get("db_instances", []),
+                    id_field="db_instance_identifier",
+                    region=region,
+                )
+
             return scan_run_id

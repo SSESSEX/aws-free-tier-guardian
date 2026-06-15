@@ -32,6 +32,11 @@ from app.scanner.cloudtrail import (
     build_summary as build_cloudtrail_summary,
 )
 
+from app.scanner.rds import (
+    list_rds_db_instances,
+    build_summary as build_rds_summary,
+)
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 ENV_PATH = PROJECT_ROOT / ".env"
 
@@ -128,6 +133,10 @@ def main():
     cloudtrail_trails = list_cloudtrail_trails(session)
     cloudtrail_summary = build_cloudtrail_summary(cloudtrail_trails)
 
+    print("Running RDS scanner...")
+    rds_db_instances = list_rds_db_instances(session)
+    rds_summary = build_rds_summary(rds_db_instances)
+
     report = {
         "scan_time": datetime.now(timezone.utc).isoformat(),
         "aws_profile": AWS_PROFILE,
@@ -172,6 +181,11 @@ def main():
                 "trail_count": len(cloudtrail_trails),
                 "summary": cloudtrail_summary,
                 "trails": cloudtrail_trails,
+            },
+            "rds": {
+                "db_instance_count": len(rds_db_instances),
+                "summary": rds_summary,
+                "db_instances": rds_db_instances,
             }
         }
     }
@@ -193,6 +207,7 @@ def main():
     print(f"CloudWatch log groups found: {len(log_groups)}")
     print(f"IAM access keys found: {len(access_keys)}")
     print(f"CloudTrail trails found: {len(cloudtrail_trails)}")
+    print(f"RDS DB instances found: {len(rds_db_instances)}")
     print(f"Combined report written to: {report_path}")
     
     if scan_run_id is not None:
