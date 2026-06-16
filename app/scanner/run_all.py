@@ -12,6 +12,7 @@ from app.scanner.ec2 import list_ec2_instances, build_summary as build_ec2_summa
 from app.scanner.ebs import list_ebs_volumes, build_summary as build_ebs_summary
 from app.scanner.eip import list_elastic_ips, build_summary as build_eip_summary
 from app.storage.postgres_writer import save_report_to_postgres
+from app.reports.scan_summary import build_global_summary
 from app.scanner.security_group import (
     list_security_groups,
     build_summary as build_security_group_summary,
@@ -137,66 +138,79 @@ def main():
     rds_db_instances = list_rds_db_instances(session)
     rds_summary = build_rds_summary(rds_db_instances)
 
+    services = {
+        "s3": {
+            "bucket_count": len(buckets),
+            "summary": s3_summary,
+            "buckets": buckets,
+        },
+        "ec2": {
+            "instance_count": len(instances),
+            "summary": ec2_summary,
+            "instances": instances,
+        },
+        "ebs": {
+            "volume_count": len(volumes),
+            "summary": ebs_summary,
+            "volumes": volumes,
+        },
+        "eip": {
+            "elastic_ip_count": len(addresses),
+            "summary": eip_summary,
+            "elastic_ips": addresses,
+        },
+        "security_groups": {
+            "security_group_count": len(security_groups),
+            "summary": security_group_summary,
+            "security_groups": security_groups,
+        },
+        "cloudwatch_logs": {
+            "log_group_count": len(log_groups),
+            "summary": cloudwatch_logs_summary,
+            "log_groups": log_groups,
+        },
+        "iam_access_keys": {
+            "access_key_count": len(access_keys),
+            "summary": iam_access_keys_summary,
+            "access_keys": access_keys,
+        },
+        "cloudtrail": {
+            "trail_count": len(cloudtrail_trails),
+            "summary": cloudtrail_summary,
+            "trails": cloudtrail_trails,
+        },
+        "rds": {
+            "db_instance_count": len(rds_db_instances),
+            "summary": rds_summary,
+            "db_instances": rds_db_instances,
+        },
+    }
+
+    global_summary = build_global_summary(services)
+
     report = {
         "scan_time": datetime.now(timezone.utc).isoformat(),
         "aws_profile": AWS_PROFILE,
         "aws_region": AWS_DEFAULT_REGION,
-        "services": {
-            "s3": {
-                "bucket_count": len(buckets),
-                "summary": s3_summary,
-                "buckets": buckets
-            },
-            "ec2": {
-                "instance_count": len(instances),
-                "summary": ec2_summary,
-                "instances": instances
-            },
-            "ebs": {
-                "volume_count": len(volumes),
-                "summary": ebs_summary,
-                "volumes": volumes
-            },
-            "eip": {
-                "elastic_ip_count": len(addresses),
-                "summary": eip_summary,
-                "elastic_ips": addresses
-            },
-            "security_groups": {
-                "security_group_count": len(security_groups),
-                "summary": security_group_summary,
-                "security_groups": security_groups,
-            },
-            "cloudwatch_logs": {
-                "log_group_count": len(log_groups),
-                "summary": cloudwatch_logs_summary,
-                "log_groups": log_groups,
-            },
-            "iam_access_keys": {
-                "access_key_count": len(access_keys),
-                "summary": iam_access_keys_summary,
-                "access_keys": access_keys,
-            },
-            "cloudtrail": {
-                "trail_count": len(cloudtrail_trails),
-                "summary": cloudtrail_summary,
-                "trails": cloudtrail_trails,
-            },
-            "rds": {
-                "db_instance_count": len(rds_db_instances),
-                "summary": rds_summary,
-                "db_instances": rds_db_instances,
-            }
-        }
+        "summary": global_summary,
+        "services": services,
     }
 
     report_path = write_report(report)
     scan_run_id = None
 
     if args.write_db:
-        from app.storage.postgres_writer import save_report_to_postgres
+        scan_run_id = save_report_to_postgres(report)
+
+    
+    report_path = write_report(report)
+    scan_run_id = None
+
+    if args.write_db:
 
         scan_run_id = save_report_to_postgres(report)
+
+    
 
     print("Scan complete.")
     print(f"S3 buckets found: {len(buckets)}")
@@ -214,6 +228,21 @@ def main():
         print(f"Scan saved to PostgreSQL with scan_run_id: {scan_run_id}")
     else:
         print("PostgreSQL save skipped. Use --write-db to persist results.")
+
+    print(f"Overall status: {global_summary['overall_status']}")
+    print(f"Services scanned: {global_summary['services_scanned']}")
+    print(f"Resources scanned: {global_summary['resources_scanned']}")
+    print(f"Total findings: {global_summary['total_findings']}")
+    print(f"Warnings: {global_summary['warnings']}")
+    print(f"Failures: {global_summary['failed']}")
+
+    if global_summary["top_risks"]:
+        print("Top risks:")
+        for risk in global_summary["top_risks"][:5]:
+            print(
+                f"- [{risk['severity']}] {risk['service']} / "
+                f"{risk['resource_type']} / {risk['check']}: {risk['message']}"
+        )
 
 
 if __name__ == "__main__":
