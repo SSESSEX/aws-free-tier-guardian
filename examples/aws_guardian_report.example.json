@@ -216,7 +216,7 @@
           "group_name": "default",
           "description": "default VPC security group",
           "vpc_id": "vpc-example001",
-          "owner_id": "123456789012",
+          "owner_id": "ACCOUNT_ID_REDACTED",
           "inbound_rules": [
             {
               "protocol": "-1",
@@ -282,7 +282,7 @@
           "group_name": "launch-wizard-1",
           "description": "example security group created for scanner testing",
           "vpc_id": "vpc-example001",
-          "owner_id": "123456789012",
+          "owner_id": "ACCOUNT_ID_REDACTED",
           "inbound_rules": [
             {
               "protocol": "tcp",

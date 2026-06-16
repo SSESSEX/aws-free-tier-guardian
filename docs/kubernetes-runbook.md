@@ -63,7 +63,7 @@ kubectl create secret generic guardian-postgres-secret \
   -n aws-guardian \
   --from-literal=POSTGRES_DB=guardian \
   --from-literal=POSTGRES_USER=guardian_user \
-  --from-literal=POSTGRES_PASSWORD=guardian_local_password \
+  --from-literal=POSTGRES_PASSWORD=change_me
   --dry-run=client -o yaml | kubectl apply -f -
 ```
 
