@@ -11,6 +11,7 @@ from app.scanner.s3 import list_s3_buckets, build_summary as build_s3_summary
 from app.scanner.ec2 import list_ec2_instances, build_summary as build_ec2_summary
 from app.scanner.ebs import list_ebs_volumes, build_summary as build_ebs_summary
 from app.scanner.eip import list_elastic_ips, build_summary as build_eip_summary
+from app.reports.markdown_report import write_markdown_report
 from app.storage.postgres_writer import save_report_to_postgres
 from app.reports.scan_summary import build_global_summary
 from app.scanner.security_group import (
@@ -197,20 +198,17 @@ def main():
     }
 
     report_path = write_report(report)
+
+    markdown_report_path = write_markdown_report(
+        report=report,
+        output_dir=PROJECT_ROOT / REPORT_OUTPUT_DIR,
+    )
+
     scan_run_id = None
 
     if args.write_db:
         scan_run_id = save_report_to_postgres(report)
 
-    
-    report_path = write_report(report)
-    scan_run_id = None
-
-    if args.write_db:
-
-        scan_run_id = save_report_to_postgres(report)
-
-    
 
     print("Scan complete.")
     print(f"S3 buckets found: {len(buckets)}")
@@ -223,6 +221,7 @@ def main():
     print(f"CloudTrail trails found: {len(cloudtrail_trails)}")
     print(f"RDS DB instances found: {len(rds_db_instances)}")
     print(f"Combined report written to: {report_path}")
+    print(f"Markdown report written to: {markdown_report_path}")
     
     if scan_run_id is not None:
         print(f"Scan saved to PostgreSQL with scan_run_id: {scan_run_id}")
