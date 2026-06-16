@@ -116,7 +116,7 @@ def test_build_global_summary_counts_resources_and_findings():
             },
             "access_keys": [
                 {
-                    "masked_access_key_id": "AKIA********YJOY",
+                    "masked_access_key_id": "AKIA********EXAMPLE",
                     "findings": [
                         {
                             "check": "IAM_ACCESS_KEY_AGE",

@@ -82,7 +82,7 @@ Create app secret:
 ```bash
 kubectl create secret generic guardian-app-secret \
   -n aws-guardian \
-  --from-literal=DATABASE_URL=postgresql://guardian_user:guardian_local_password@guardian-postgres:5432/guardian \
+  --from-literal=DATABASE_URL=postgresql://<postgres-user>:<postgres-password>@guardian-postgres:5432/<postgres-db>
   --dry-run=client -o yaml | kubectl apply -f -
 ```
 
