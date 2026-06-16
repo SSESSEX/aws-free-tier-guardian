@@ -1,186 +1,12 @@
-# AWS Free-Tier Guardian
+# Kubernetes Manifests
 
-![Python Tests](https://github.com/sheyishoyebi123/aws-free-tier-guardian/actions/workflows/tests.yml/badge.svg)
+This directory contains local Kubernetes manifests for AWS Free-Tier Guardian.
 
-AWS Free-Tier Guardian is a Python-based AWS governance scanner that inspects cost, security, tagging, and configuration risks across multiple AWS services.
+The project uses `kind` for local Kubernetes development. The scanner image is built locally, loaded into the kind cluster, and executed through Kubernetes Jobs or CronJobs.
 
-The project is designed as a practical cloud/data engineering portfolio project, combining AWS APIs, Python, PostgreSQL, Docker, Kubernetes, CI/CD, and automated rule testing.
+## Resources
 
----
-
-## Current Status
-
-AWS Free-Tier Guardian currently scans:
-
-* S3 buckets
-* EC2 instances
-* EBS volumes
-* Elastic IPs
-* Security groups
-* CloudWatch Log Groups
-* IAM access keys
-* CloudTrail trails
-* RDS DB instances
-
-The scanner produces:
-
-* JSON scan reports
-* Markdown executive reports
-* PostgreSQL persistence
-* Global risk summaries
-* Service-level findings
-* Unit-tested rule evaluation
-* Dockerized execution
-* Kubernetes Job and CronJob orchestration
-
-Current test coverage:
-
-```text
-135 passing tests
-```
-
----
-
-## Architecture Snapshot
-
-```text
-AWS APIs
-  ↓
-Python boto3 scanners
-  ↓
-Rule evaluation engine
-  ↓
-Global summary builder
-  ↓
-JSON report + Markdown executive report
-  ↓
-PostgreSQL persistence
-  ↓
-Docker Compose / Kubernetes CronJob execution
-```
-
----
-
-## Core Features
-
-### AWS service scanning
-
-The scanner collects resource metadata from AWS using read-only IAM permissions. Each scanner normalizes service-specific AWS responses into structured Python dictionaries.
-
-### Rule evaluation
-
-Each service has a dedicated rules module that evaluates resources for cost, security, tagging, and configuration risks.
-
-Example checks include:
-
-* S3 bucket versioning and encryption
-* EC2 running instance detection
-* EBS unattached volume detection
-* Elastic IP association checks
-* Security group public inbound exposure
-* CloudWatch Log Group retention checks
-* IAM access key age and last-used checks
-* CloudTrail logging visibility
-* RDS public accessibility, encryption, backup retention, and deletion protection
-
-### Global summary reporting
-
-The combined scanner report includes an executive-level summary:
-
-* Overall account status
-* Number of services scanned
-* Number of resources scanned
-* Total findings
-* Warning and failure counts
-* Resources by service
-* Service-level statuses
-* Top risks across all scanned services
-
-### PostgreSQL persistence
-
-Scan results can be persisted to PostgreSQL using a normalized schema:
-
-* `scan_runs`
-* `resources`
-* `findings`
-
-Raw resource metadata is stored as JSONB while findings remain queryable for analytics.
-
-### Reporting
-
-The scanner writes both:
-
-```text
-reports/aws_guardian_report.json
-reports/aws_guardian_report.md
-```
-
-The JSON report is machine-readable. The Markdown report is designed for human-readable review.
-
----
-
-## Local Usage
-
-Run all scanners and write local reports:
-
-```bash
-python3 -m app.scanner.run_all
-```
-
-Run all scanners and persist results to PostgreSQL:
-
-```bash
-python3 -m app.scanner.run_all --write-db
-```
-
-Run tests locally:
-
-```bash
-python3 -m pytest
-```
-
-Run tests inside Docker:
-
-```bash
-docker compose build scanner
-docker compose run --rm scanner python -m pytest
-```
-
----
-
-## Docker Usage
-
-Start PostgreSQL:
-
-```bash
-docker compose up -d postgres
-```
-
-Run the scanner through Docker Compose:
-
-```bash
-docker compose run --rm scanner python -m app.scanner.run_all --write-db
-```
-
-Run tests through Docker Compose:
-
-```bash
-docker compose run --rm scanner python -m pytest
-```
-
----
-
-## Kubernetes
-
-Local Kubernetes manifests are stored in:
-
-```text
-k8s/
-```
-
-This project uses `kind` for local Kubernetes development. The scanner image is built locally and loaded into the kind cluster.
-
-Kubernetes resources include:
+This directory includes manifests for:
 
 * Namespace
 * PostgreSQL PersistentVolumeClaim
@@ -188,17 +14,21 @@ Kubernetes resources include:
 * PostgreSQL Service
 * Scanner Job
 * Scanner CronJob
-* ConfigMap for database schema
-* Secrets for PostgreSQL, AWS credentials, and application configuration
 
-Build and load the scanner image into kind:
+Secrets and ConfigMaps are created manually during local setup and are not committed with real values.
+
+## Build and Load Scanner Image
+
+From the project root:
 
 ```bash
 docker build -t aws-free-tier-guardian-scanner:local .
 kind load docker-image aws-free-tier-guardian-scanner:local --name aws-guardian
 ```
 
-Apply Kubernetes resources:
+## Apply Kubernetes Resources
+
+From the project root:
 
 ```bash
 kubectl apply -f k8s/namespace.yaml
@@ -208,118 +38,44 @@ kubectl apply -f k8s/postgres-service.yaml
 kubectl apply -f k8s/scanner-cronjob.yaml
 ```
 
-Trigger a manual scan from the CronJob:
+## Trigger a Manual Scan
 
 ```bash
 kubectl -n aws-guardian create job manual-guardian-scan \
   --from=cronjob/aws-guardian-scan
 ```
 
-View scan logs:
+## View Scan Logs
 
 ```bash
 kubectl -n aws-guardian logs job/manual-guardian-scan
 ```
 
-Delete the manual job:
+## Delete Manual Scan Job
 
 ```bash
 kubectl -n aws-guardian delete job manual-guardian-scan
 ```
 
----
-
-## Testing
-
-The project includes unit tests for scanner rule logic and reporting utilities.
-
-Current test areas include:
-
-* S3 rules
-* EC2 rules
-* EBS rules
-* Elastic IP rules
-* Security group rules
-* CloudWatch Logs rules
-* IAM access key rules
-* CloudTrail rules
-* RDS rules
-* Global scan summary generation
-* Markdown report generation
-
-Run all tests:
+## Check Resources
 
 ```bash
-python3 -m pytest
+kubectl -n aws-guardian get all
+kubectl -n aws-guardian get secrets
+kubectl -n aws-guardian get configmaps
+kubectl -n aws-guardian get pvc
 ```
 
----
+## Detailed Runbook
 
-## Security Model
-
-AWS Free-Tier Guardian is designed around least privilege.
-
-The scanner uses read-only IAM permissions for each supported AWS service. It does not create, modify, start, stop, rotate, or delete AWS resources.
-
-Sensitive files are excluded from version control, including:
+For the full local Kubernetes setup and operational commands, see:
 
 ```text
-.env
-reports/
-.venv/
+docs/kubernetes-runbook.md
 ```
 
-AWS credentials are provided locally through the AWS CLI profile and, in Kubernetes, through a Kubernetes Secret mounted into the scanner container.
+## Security Note
 
----
+Do not commit real Kubernetes Secrets, AWS credentials, database passwords, `.env` files, or generated reports.
 
-## Example Output
-
-Example console summary:
-
-```text
-Overall status: WARN
-Services scanned: 9
-Resources scanned: 4
-Total findings: 20
-Warnings: 4
-Failures: 0
-
-Top risks:
-- [HIGH] cloudtrail / account / CLOUDTRAIL_TRAIL_EXISTS
-- [MEDIUM] s3 / bucket / S3_VERSIONING
-- [LOW] security_groups / security_group / SG_REQUIRED_TAGS
-```
-
----
-
-## Project Purpose
-
-This project demonstrates practical cloud engineering and data engineering skills, including:
-
-* AWS API integration with boto3
-* IAM least-privilege design
-* Rule-based governance scanning
-* Python package structure
-* PostgreSQL persistence
-* JSONB storage
-* SQL analytics readiness
-* Dockerized execution
-* Kubernetes Job and CronJob orchestration
-* GitHub Actions CI
-* Automated testing
-* Human-readable reporting
-
----
-
-## Roadmap
-
-Potential future improvements:
-
-* Terraform/OpenTofu infrastructure definitions
-* Additional AWS service scanners
-* Historical trend dashboard
-* FastAPI reporting endpoint
-* Streamlit or React dashboard
-* More advanced cost-risk scoring
-* Alerting for high-risk findings
+The committed manifests reference Kubernetes Secrets by name, but the real secret values are created locally and excluded from version control.
