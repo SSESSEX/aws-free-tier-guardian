@@ -59,6 +59,7 @@ PostgreSQL persistence
 Docker Compose / Kubernetes CronJob execution
 ```
 
+For a more detailed architecture view, see [`docs/architecture.md`](docs/architecture.md).
 ---
 
 ## Core Features
