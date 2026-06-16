@@ -1,0 +1,470 @@
+{
+  "scan_time": "2026-06-16T10:04:00.208959+00:00",
+  "aws_profile": "example-profile",
+  "aws_region": "eu-west-2",
+  "summary": {
+    "overall_status": "WARN",
+    "services_scanned": 9,
+    "resources_scanned": 4,
+    "resources_by_service": {
+      "s3": 1,
+      "ec2": 0,
+      "ebs": 0,
+      "eip": 0,
+      "security_groups": 2,
+      "cloudwatch_logs": 0,
+      "iam_access_keys": 1,
+      "cloudtrail": 0,
+      "rds": 0
+    },
+    "services_by_status": {
+      "s3": "WARN",
+      "ec2": "PASS",
+      "ebs": "PASS",
+      "eip": "PASS",
+      "security_groups": "WARN",
+      "cloudwatch_logs": "PASS",
+      "iam_access_keys": "PASS",
+      "cloudtrail": "WARN",
+      "rds": "PASS"
+    },
+    "total_findings": 20,
+    "passed": 13,
+    "warnings": 4,
+    "failed": 0,
+    "info": 3,
+    "critical": 0,
+    "high": 1,
+    "medium": 1,
+    "low": 18,
+    "top_risks": [
+      {
+        "service": "cloudtrail",
+        "resource_type": "account",
+        "resource_id": "account",
+        "check": "CLOUDTRAIL_TRAIL_EXISTS",
+        "status": "WARN",
+        "severity": "HIGH",
+        "message": "No CloudTrail trail was found. Consider configuring a trail for long-term audit logging."
+      },
+      {
+        "service": "s3",
+        "resource_type": "bucket",
+        "resource_id": "example-dev-bucket",
+        "check": "S3_VERSIONING",
+        "status": "WARN",
+        "severity": "MEDIUM",
+        "message": "Bucket versioning is disabled. This may be acceptable for a dev bucket, but production buckets should usually enable versioning."
+      },
+      {
+        "service": "security_groups",
+        "resource_type": "security_group",
+        "resource_id": "sg-example001",
+        "check": "SG_REQUIRED_TAGS",
+        "status": "WARN",
+        "severity": "LOW",
+        "message": "Security group is missing recommended tags: ['Project', 'Environment']."
+      },
+      {
+        "service": "security_groups",
+        "resource_type": "security_group",
+        "resource_id": "sg-example002",
+        "check": "SG_REQUIRED_TAGS",
+        "status": "WARN",
+        "severity": "LOW",
+        "message": "Security group is missing recommended tags: ['Project', 'Environment']."
+      }
+    ]
+  },
+  "services": {
+    "s3": {
+      "bucket_count": 1,
+      "summary": {
+        "total_findings": 6,
+        "passed": 5,
+        "warnings": 1,
+        "failed": 0,
+        "critical": 0,
+        "high": 0,
+        "medium": 1,
+        "low": 5,
+        "overall_status": "WARN"
+      },
+      "buckets": [
+        {
+          "name": "example-dev-bucket",
+          "creation_date": "2026-06-06T10:21:44+00:00",
+          "region": "eu-west-2",
+          "public_access_block": {
+            "BlockPublicAcls": true,
+            "IgnorePublicAcls": true,
+            "BlockPublicPolicy": true,
+            "RestrictPublicBuckets": true
+          },
+          "encryption": {
+            "enabled": true,
+            "algorithm": "AES256",
+            "bucket_key_enabled": true
+          },
+          "versioning": {
+            "status": "Disabled",
+            "mfa_delete": "Disabled"
+          },
+          "policy_status": {
+            "is_public": false
+          },
+          "ownership_controls": {
+            "object_ownership": "BucketOwnerEnforced"
+          },
+          "tags": {
+            "Project": "AWSFreeTierGuardian",
+            "Environment": "Dev"
+          },
+          "policy": null,
+          "findings": [
+            {
+              "check": "S3_PUBLIC_ACCESS_BLOCK",
+              "status": "PASS",
+              "severity": "LOW",
+              "message": "All bucket-level public access block settings are enabled."
+            },
+            {
+              "check": "S3_DEFAULT_ENCRYPTION",
+              "status": "PASS",
+              "severity": "LOW",
+              "message": "Bucket has default encryption enabled using AES256."
+            },
+            {
+              "check": "S3_VERSIONING",
+              "status": "WARN",
+              "severity": "MEDIUM",
+              "message": "Bucket versioning is disabled. This may be acceptable for a dev bucket, but production buckets should usually enable versioning."
+            },
+            {
+              "check": "S3_BUCKET_POLICY_PUBLIC",
+              "status": "PASS",
+              "severity": "LOW",
+              "message": "Bucket policy is not public."
+            },
+            {
+              "check": "S3_OBJECT_OWNERSHIP",
+              "status": "PASS",
+              "severity": "LOW",
+              "message": "Bucket uses BucketOwnerEnforced ownership, meaning ACLs are disabled."
+            },
+            {
+              "check": "S3_REQUIRED_TAGS",
+              "status": "PASS",
+              "severity": "LOW",
+              "message": "Bucket has the recommended Project and Environment tags."
+            }
+          ]
+        }
+      ]
+    },
+    "ec2": {
+      "instance_count": 0,
+      "summary": {
+        "total_instances_seen": 0,
+        "active_instances": 0,
+        "running": 0,
+        "stopped": 0,
+        "terminated": 0,
+        "active_with_public_ip": 0
+      },
+      "instances": []
+    },
+    "ebs": {
+      "volume_count": 0,
+      "summary": {
+        "total_volumes": 0,
+        "available_unattached": 0,
+        "in_use": 0,
+        "encrypted": 0,
+        "unencrypted": 0,
+        "total_size_gib": 0
+      },
+      "volumes": []
+    },
+    "eip": {
+      "elastic_ip_count": 0,
+      "summary": {
+        "total_elastic_ips": 0,
+        "associated": 0,
+        "unassociated": 0
+      },
+      "elastic_ips": []
+    },
+    "security_groups": {
+      "security_group_count": 2,
+      "summary": {
+        "total_security_groups": 2,
+        "total_findings": 10,
+        "passed": 6,
+        "warnings": 2,
+        "failed": 0,
+        "info": 2,
+        "critical": 0,
+        "high": 0,
+        "medium": 0,
+        "low": 10,
+        "overall_status": "WARN"
+      },
+      "security_groups": [
+        {
+          "group_id": "sg-example001",
+          "group_name": "default",
+          "description": "default VPC security group",
+          "vpc_id": "vpc-example001",
+          "owner_id": "123456789012",
+          "inbound_rules": [
+            {
+              "protocol": "-1",
+              "from_port": null,
+              "to_port": null,
+              "ipv4_ranges": [],
+              "ipv6_ranges": [],
+              "prefix_list_ids": [],
+              "user_id_group_pairs": [
+                "sg-example001"
+              ]
+            }
+          ],
+          "outbound_rules": [
+            {
+              "protocol": "-1",
+              "from_port": null,
+              "to_port": null,
+              "ipv4_ranges": [
+                "0.0.0.0/0"
+              ],
+              "ipv6_ranges": [],
+              "prefix_list_ids": [],
+              "user_id_group_pairs": []
+            }
+          ],
+          "tags": {},
+          "findings": [
+            {
+              "check": "SG_WORLD_OPEN_ADMIN_PORTS",
+              "status": "PASS",
+              "severity": "LOW",
+              "message": "Security group does not allow SSH/RDP from the internet."
+            },
+            {
+              "check": "SG_WORLD_OPEN_DATABASE_PORTS",
+              "status": "PASS",
+              "severity": "LOW",
+              "message": "Security group does not expose common database ports to the internet."
+            },
+            {
+              "check": "SG_WORLD_OPEN_INBOUND",
+              "status": "PASS",
+              "severity": "LOW",
+              "message": "Security group has no inbound rules open to the internet."
+            },
+            {
+              "check": "SG_HAS_INBOUND_RULES",
+              "status": "INFO",
+              "severity": "LOW",
+              "message": "Security group has 1 inbound rule(s)."
+            },
+            {
+              "check": "SG_REQUIRED_TAGS",
+              "status": "WARN",
+              "severity": "LOW",
+              "message": "Security group is missing recommended tags: ['Project', 'Environment']."
+            }
+          ]
+        },
+        {
+          "group_id": "sg-example002",
+          "group_name": "launch-wizard-1",
+          "description": "example security group created for scanner testing",
+          "vpc_id": "vpc-example001",
+          "owner_id": "123456789012",
+          "inbound_rules": [
+            {
+              "protocol": "tcp",
+              "from_port": 22,
+              "to_port": 22,
+              "ipv4_ranges": [
+                "203.0.113.10/32"
+              ],
+              "ipv6_ranges": [],
+              "prefix_list_ids": [],
+              "user_id_group_pairs": []
+            }
+          ],
+          "outbound_rules": [
+            {
+              "protocol": "-1",
+              "from_port": null,
+              "to_port": null,
+              "ipv4_ranges": [
+                "0.0.0.0/0"
+              ],
+              "ipv6_ranges": [],
+              "prefix_list_ids": [],
+              "user_id_group_pairs": []
+            }
+          ],
+          "tags": {},
+          "findings": [
+            {
+              "check": "SG_WORLD_OPEN_ADMIN_PORTS",
+              "status": "PASS",
+              "severity": "LOW",
+              "message": "Security group does not allow SSH/RDP from the internet."
+            },
+            {
+              "check": "SG_WORLD_OPEN_DATABASE_PORTS",
+              "status": "PASS",
+              "severity": "LOW",
+              "message": "Security group does not expose common database ports to the internet."
+            },
+            {
+              "check": "SG_WORLD_OPEN_INBOUND",
+              "status": "PASS",
+              "severity": "LOW",
+              "message": "Security group has no inbound rules open to the internet."
+            },
+            {
+              "check": "SG_HAS_INBOUND_RULES",
+              "status": "INFO",
+              "severity": "LOW",
+              "message": "Security group has 1 inbound rule(s)."
+            },
+            {
+              "check": "SG_REQUIRED_TAGS",
+              "status": "WARN",
+              "severity": "LOW",
+              "message": "Security group is missing recommended tags: ['Project', 'Environment']."
+            }
+          ]
+        }
+      ]
+    },
+    "cloudwatch_logs": {
+      "log_group_count": 0,
+      "summary": {
+        "total_log_groups": 0,
+        "no_retention_policy": 0,
+        "total_stored_bytes": 0,
+        "total_findings": 0,
+        "passed": 0,
+        "warnings": 0,
+        "failed": 0,
+        "info": 0,
+        "critical": 0,
+        "high": 0,
+        "medium": 0,
+        "low": 0,
+        "overall_status": "PASS"
+      },
+      "log_groups": []
+    },
+    "iam_access_keys": {
+      "access_key_count": 1,
+      "summary": {
+        "total_access_keys": 1,
+        "active_keys": 1,
+        "inactive_keys": 0,
+        "never_used_keys": 0,
+        "keys_older_than_90_days": 0,
+        "total_findings": 3,
+        "passed": 2,
+        "warnings": 0,
+        "failed": 0,
+        "info": 1,
+        "critical": 0,
+        "high": 0,
+        "medium": 0,
+        "low": 3,
+        "overall_status": "PASS"
+      },
+      "access_keys": [
+        {
+          "user_name": "example-scanner-user",
+          "masked_access_key_id": "AKIA********EXAMPLE",
+          "status": "Active",
+          "create_date": "2026-06-05T23:00:39+00:00",
+          "age_days": 10,
+          "last_used_date": "2026-06-16T09:45:00+00:00",
+          "last_used_age_days": 0,
+          "last_used_service": "ec2",
+          "last_used_region": "eu-west-2",
+          "findings": [
+            {
+              "check": "IAM_ACCESS_KEY_ACTIVE",
+              "status": "INFO",
+              "severity": "LOW",
+              "message": "Access key is active."
+            },
+            {
+              "check": "IAM_ACCESS_KEY_AGE",
+              "status": "PASS",
+              "severity": "LOW",
+              "message": "Active access key is 10 days old."
+            },
+            {
+              "check": "IAM_ACCESS_KEY_RECENTLY_USED",
+              "status": "PASS",
+              "severity": "LOW",
+              "message": "Active access key was last used 0 days ago."
+            }
+          ]
+        }
+      ]
+    },
+    "cloudtrail": {
+      "trail_count": 0,
+      "summary": {
+        "total_trails": 0,
+        "logging_disabled": 0,
+        "non_multi_region_trails": 0,
+        "trails_without_log_file_validation": 0,
+        "account_findings": [
+          {
+            "check": "CLOUDTRAIL_TRAIL_EXISTS",
+            "status": "WARN",
+            "severity": "HIGH",
+            "message": "No CloudTrail trail was found. Consider configuring a trail for long-term audit logging."
+          }
+        ],
+        "total_findings": 1,
+        "passed": 0,
+        "warnings": 1,
+        "failed": 0,
+        "info": 0,
+        "critical": 0,
+        "high": 1,
+        "medium": 0,
+        "low": 0,
+        "overall_status": "WARN"
+      },
+      "trails": []
+    },
+    "rds": {
+      "db_instance_count": 0,
+      "summary": {
+        "total_db_instances": 0,
+        "running_instances": 0,
+        "public_instances": 0,
+        "unencrypted_instances": 0,
+        "deletion_protection_disabled": 0,
+        "total_findings": 0,
+        "passed": 0,
+        "warnings": 0,
+        "failed": 0,
+        "info": 0,
+        "critical": 0,
+        "high": 0,
+        "medium": 0,
+        "low": 0,
+        "overall_status": "PASS"
+      },
+      "db_instances": []
+    }
+  }
+}
