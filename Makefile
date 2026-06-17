@@ -1,4 +1,4 @@
-.PHONY: test redaction-check scan scan-db docker-build docker-test docker-scan k8s-load k8s-manual-scan k8s-manual-logs k8s-delete-manual
+.PHONY: test redaction-check scan scan-db docker-build docker-test docker-scan k8s-load k8s-manual-scan k8s-manual-logs k8s-delete-manual tofu-fmt tofu-validate tofu-plan tofu-check
 
 test:
 	python3 -m pytest
@@ -33,3 +33,15 @@ k8s-manual-logs:
 
 k8s-delete-manual:
 	kubectl -n aws-guardian delete job manual-guardian-scan
+tofu-fmt:
+	cd infra/opentofu && tofu fmt
+
+tofu-validate:
+	cd infra/opentofu && tofu validate
+
+tofu-plan:
+	cd infra/opentofu && tofu plan
+
+tofu-check:
+	cd infra/opentofu && tofu fmt -check
+	cd infra/opentofu && tofu validate
