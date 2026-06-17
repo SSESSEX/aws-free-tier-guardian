@@ -1,4 +1,4 @@
-.PHONY: test redaction-check scan scan-db docker-build docker-test docker-scan k8s-load k8s-manual-scan k8s-manual-logs k8s-delete-manual tofu-fmt tofu-validate tofu-plan tofu-check
+.PHONY: test redaction-check scan scan-db docker-build docker-test docker-scan k8s-load k8s-manual-scan k8s-manual-logs k8s-delete-manual tofu-fmt tofu-validate tofu-plan tofu-check validate-local validate-full
 
 test:
 	python3 -m pytest
@@ -45,3 +45,16 @@ tofu-plan:
 tofu-check:
 	cd infra/opentofu && tofu fmt -check
 	cd infra/opentofu && tofu validate
+
+
+validate-local:
+	$(MAKE) tofu-check
+	$(MAKE) test
+	$(MAKE) redaction-check
+
+validate-full:
+	$(MAKE) tofu-check
+	$(MAKE) test
+	$(MAKE) redaction-check
+	$(MAKE) docker-build
+	$(MAKE) docker-test
