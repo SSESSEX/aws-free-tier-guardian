@@ -7,7 +7,7 @@ The first phase is intentionally read-only and cost-safe. It configures the AWS 
 ```markdown
 OpenTofu state and import safety are documented in [`docs/opentofu-state-and-import.md`](docs/opentofu-state-and-import.md).
 ```
-
+Before adding paid AWS resources through OpenTofu, review the project cost-safety guardrails in [`../../docs/cost-safety-guardrails.md`](../../docs/cost-safety-guardrails.md).
 ## Commands
 
 Initialize OpenTofu:
