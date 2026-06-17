@@ -21,3 +21,9 @@ variable "guardian_read_only_policy_name" {
   type        = string
   default     = "aws-free-tier-guardian-read-only"
 }
+
+variable "guardian_scanner_group_name" {
+  description = "Existing IAM group used by the AWS Free-Tier Guardian scanner user."
+  type        = string
+  default     = "AWSFreeTierGuardianDevelopers"
+}
