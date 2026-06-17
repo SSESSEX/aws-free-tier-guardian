@@ -10,3 +10,5 @@ Initialize OpenTofu:
 
 ```bash
 tofu init
+
+OpenTofu should be run with an infrastructure-management AWS profile, not the read-only scanner profile. See [`../../docs/aws-identity-model.md`](../../docs/aws-identity-model.md).

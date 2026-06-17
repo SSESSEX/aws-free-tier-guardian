@@ -274,6 +274,8 @@ AWS credentials are provided locally through the AWS CLI profile and, in Kuberne
 
 ---
 
+For the AWS profile and permission separation model, see [`docs/aws-identity-model.md`](docs/aws-identity-model.md).
+
 ## Example Output
 
 Example console summary:
