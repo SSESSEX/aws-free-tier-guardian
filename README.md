@@ -233,6 +233,7 @@ Delete the manual job:
 kubectl -n aws-guardian delete job manual-guardian-scan
 ```
 
+Apache Airflow orchestration notes and DAGs are available in [`airflow/`](airflow/).
 ---
 
 ## Testing
