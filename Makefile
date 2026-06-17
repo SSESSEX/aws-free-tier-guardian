@@ -1,4 +1,4 @@
-.PHONY: test redaction-check scan scan-db docker-build docker-test docker-scan k8s-load k8s-manual-scan k8s-manual-logs k8s-delete-manual tofu-fmt tofu-validate tofu-plan tofu-check validate-local validate-full
+.PHONY: test redaction-check scan scan-db docker-build docker-test docker-scan k8s-load k8s-manual-scan k8s-manual-logs k8s-delete-manual tofu-fmt tofu-validate tofu-plan tofu-check validate-local validate-full dbt-debug dbt-run dbt-test dbt-check
 
 test:
 	python3 -m pytest
@@ -58,3 +58,18 @@ validate-full:
 	$(MAKE) redaction-check
 	$(MAKE) docker-build
 	$(MAKE) docker-test
+
+
+dbt-debug:
+	cd analytics/dbt && DBT_PROFILES_DIR=. dbt debug
+
+dbt-run:
+	cd analytics/dbt && DBT_PROFILES_DIR=. dbt run
+
+dbt-test:
+	cd analytics/dbt && DBT_PROFILES_DIR=. dbt test
+
+dbt-check:
+	cd analytics/dbt && DBT_PROFILES_DIR=. dbt debug
+	cd analytics/dbt && DBT_PROFILES_DIR=. dbt run
+	cd analytics/dbt && DBT_PROFILES_DIR=. dbt test

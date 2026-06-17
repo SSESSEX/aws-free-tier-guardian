@@ -17,3 +17,8 @@ override.tf
 override.tf.json
 *_override.tf
 *_override.tf.json
+# dbt local profile and artifacts
+analytics/dbt/profiles.yml
+analytics/dbt/target/
+analytics/dbt/dbt_packages/
+analytics/dbt/logs/

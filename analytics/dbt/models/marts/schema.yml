@@ -1,0 +1,29 @@
+version: 2
+
+models:
+  - name: service_risk_summary
+    description: "Aggregates resources and findings by scan run and AWS service."
+    columns:
+      - name: scan_run_id
+        tests:
+          - not_null
+      - name: service
+        tests:
+          - not_null
+
+  - name: latest_scan_findings
+    description: "Shows findings for the most recent scanner run."
+    columns:
+      - name: scan_run_id
+        tests:
+          - not_null
+      - name: service
+        tests:
+          - not_null
+
+  - name: daily_scan_summary
+    description: "Summarises scan findings by scan date."
+    columns:
+      - name: scan_date
+        tests:
+          - not_null

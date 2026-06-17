@@ -1,0 +1,14 @@
+name: "aws_free_tier_guardian"
+version: "1.0.0"
+config-version: 2
+
+profile: "aws_free_tier_guardian"
+
+model-paths: ["models"]
+
+models:
+  aws_free_tier_guardian:
+    staging:
+      +materialized: view
+    marts:
+      +materialized: table

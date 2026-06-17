@@ -1,0 +1,9 @@
+version: 2
+
+sources:
+  - name: guardian
+    schema: public
+    tables:
+      - name: scan_runs
+      - name: resources
+      - name: findings
