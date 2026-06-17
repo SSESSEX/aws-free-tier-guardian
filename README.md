@@ -8,6 +8,9 @@ AWS Free-Tier Guardian is a Python-based AWS governance scanner that inspects co
 The project is designed as a practical cloud/data engineering portfolio project, combining AWS APIs, Python, PostgreSQL, Docker, Kubernetes, CI/CD, and automated rule testing.
 
 The project includes separate CI workflows for Python unit tests and OpenTofu infrastructure validation.
+
+
+A CV-ready project case study is available in [`docs/case-study.md`](docs/case-study.md).
 ---
 
 ## Current Status
