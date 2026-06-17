@@ -1,0 +1,43 @@
+name: OpenTofu Validation
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "infra/opentofu/**"
+      - ".github/workflows/opentofu.yml"
+
+  pull_request:
+    paths:
+      - "infra/opentofu/**"
+      - ".github/workflows/opentofu.yml"
+
+  workflow_dispatch:
+
+jobs:
+  opentofu:
+    name: Format and validate OpenTofu
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: infra/opentofu
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_wrapper: false
+
+      - name: Initialise OpenTofu
+        run: tofu init -backend=false
+
+      - name: Check OpenTofu formatting
+        run: tofu fmt -check
+
+      - name: Validate OpenTofu configuration
+        run: tofu validate
