@@ -1,11 +1,13 @@
 # AWS Free-Tier Guardian
 
 ![Python Tests](https://github.com/SSESSEX/aws-free-tier-guardian/actions/workflows/tests.yml/badge.svg)
+![OpenTofu Validation](https://github.com/SSESSEX/aws-free-tier-guardian/actions/workflows/opentofu.yml/badge.svg)
 
 AWS Free-Tier Guardian is a Python-based AWS governance scanner that inspects cost, security, tagging, and configuration risks across multiple AWS services.
 
 The project is designed as a practical cloud/data engineering portfolio project, combining AWS APIs, Python, PostgreSQL, Docker, Kubernetes, CI/CD, and automated rule testing.
 
+The project includes separate CI workflows for Python unit tests and OpenTofu infrastructure validation.
 ---
 
 ## Current Status
