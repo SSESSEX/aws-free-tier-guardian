@@ -1,0 +1,20 @@
+# Copy this file to analytics/dbt/profiles.snowflake.yml before use.
+# Keep the copied file local. Never commit credentials.
+
+YOUR_DBT_PROFILE_NAME:
+  target: snowflake_dev
+
+  outputs:
+    snowflake_dev:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      password: "{{ env_var('SNOWFLAKE_PASSWORD') }}"
+
+      role: AWS_GUARDIAN_DBT_ROLE
+      database: AWS_GUARDIAN
+      warehouse: AWS_GUARDIAN_XS
+      schema: ANALYTICS
+
+      threads: 2
+      client_session_keep_alive: false

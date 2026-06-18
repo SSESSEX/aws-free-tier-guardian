@@ -25,3 +25,6 @@ analytics/dbt/logs/
 # PySpark local outputs
 analytics/spark/output/
 analytics/dbt/.user.yml
+
+# Local Snowflake credentials
+analytics/dbt/profiles.snowflake.yml
