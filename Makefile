@@ -1,4 +1,4 @@
-.PHONY: test redaction-check scan scan-db docker-build docker-test docker-scan k8s-load k8s-manual-scan k8s-manual-logs k8s-delete-manual tofu-fmt tofu-validate tofu-plan tofu-check validate-local validate-full dbt-debug dbt-run dbt-test dbt-check
+.PHONY: test redaction-check scan scan-db docker-build docker-test docker-scan k8s-load k8s-manual-scan k8s-manual-logs k8s-delete-manual tofu-fmt tofu-validate tofu-plan tofu-check validate-local validate-full dbt-debug dbt-run dbt-test dbt-check spark-run spark-check
 
 test:
 	python3 -m pytest
@@ -73,3 +73,9 @@ dbt-check:
 	cd analytics/dbt && DBT_PROFILES_DIR=. dbt debug
 	cd analytics/dbt && DBT_PROFILES_DIR=. dbt run
 	cd analytics/dbt && DBT_PROFILES_DIR=. dbt test
+    
+spark-run:
+	python3 analytics/spark/risk_batch_job.py --input examples/aws_guardian_report.example.json --output analytics/spark/output
+
+spark-check:
+	$(MAKE) spark-run
