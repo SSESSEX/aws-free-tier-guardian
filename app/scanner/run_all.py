@@ -39,6 +39,11 @@ from app.scanner.rds import (
     build_summary as build_rds_summary,
 )
 
+from app.scanner.budgets import (
+    list_budgets,
+    build_summary as build_budgets_summary,
+)
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 ENV_PATH = PROJECT_ROOT / ".env"
 
@@ -139,6 +144,10 @@ def main():
     rds_db_instances = list_rds_db_instances(session)
     rds_summary = build_rds_summary(rds_db_instances)
 
+    print("Running AWS Budgets scanner...")
+    budgets = list_budgets(session)
+    budgets_summary = build_budgets_summary(budgets)
+
     services = {
         "s3": {
             "bucket_count": len(buckets),
@@ -185,6 +194,11 @@ def main():
             "summary": rds_summary,
             "db_instances": rds_db_instances,
         },
+        "budgets": {
+            "budget_count": len(budgets),
+            "summary": budgets_summary,
+            "budgets": budgets,
+        },
     }
 
     global_summary = build_global_summary(services)
@@ -220,6 +234,7 @@ def main():
     print(f"IAM access keys found: {len(access_keys)}")
     print(f"CloudTrail trails found: {len(cloudtrail_trails)}")
     print(f"RDS DB instances found: {len(rds_db_instances)}")
+    print(f"AWS Budgets found: {len(budgets)}")
     print(f"Combined report written to: {report_path}")
     print(f"Markdown report written to: {markdown_report_path}")
     

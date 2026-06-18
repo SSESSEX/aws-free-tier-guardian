@@ -98,6 +98,17 @@ data "aws_iam_policy_document" "guardian_read_only" {
 
     resources = ["*"]
   }
+
+  statement {
+    sid    = "AllowBudgetsReadOnlyInventory"
+    effect = "Allow"
+
+    actions = [
+      "budgets:ViewBudget"
+    ]
+
+    resources = ["*"]
+  }
 }
 
 resource "aws_iam_policy" "guardian_read_only" {
