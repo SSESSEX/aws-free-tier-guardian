@@ -41,7 +41,7 @@ The scanner produces:
 Current test coverage:
 
 ```text
-140 passing tests
+154 passing tests
 ```
 
 ---
