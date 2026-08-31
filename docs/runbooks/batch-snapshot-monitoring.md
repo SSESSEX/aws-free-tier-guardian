@@ -84,6 +84,21 @@ Run the full scan, snapshot, and diff loop:
 python -m app.snapshots.run_guardian_batch
 ```
 
+The repository also provides a Bash wrapper for repeatable local execution:
+
+```bash
+./scripts/run_guardian_batch.sh
+```
+
+The wrapper resolves the repository root, uses `.venv/bin/python` when it is
+available, fails immediately if the batch runner fails, and prints the snapshot
+and diff-report directories after a successful run. Any batch-runner arguments
+are forwarded unchanged. For example:
+
+```bash
+./scripts/run_guardian_batch.sh --snapshot-name portfolio-scan
+```
+
 The command runs these steps in order:
 
 1. Run `app.scanner.run_all` as a subprocess.
