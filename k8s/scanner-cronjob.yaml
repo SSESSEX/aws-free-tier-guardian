@@ -24,7 +24,7 @@ spec:
               command:
                 - python
                 - -m
-                - app.scanner.run_all
+                - app.snapshots.run_guardian_batch
                 - --write-db
               env:
                 - name: AWS_PROFILE
@@ -49,4 +49,5 @@ spec:
               secret:
                 secretName: guardian-aws-credentials
             - name: reports
-              emptyDir: {}
+              persistentVolumeClaim:
+                claimName: guardian-reports-pvc

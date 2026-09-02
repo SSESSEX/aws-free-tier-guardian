@@ -63,7 +63,7 @@ kubectl create secret generic guardian-postgres-secret \
   -n aws-guardian \
   --from-literal=POSTGRES_DB=guardian \
   --from-literal=POSTGRES_USER=guardian_user \
-  --from-literal=POSTGRES_PASSWORD=change_me
+  --from-literal=POSTGRES_PASSWORD=change_me \
   --dry-run=client -o yaml | kubectl apply -f -
 ```
 
@@ -82,7 +82,7 @@ Create app secret:
 ```bash
 kubectl create secret generic guardian-app-secret \
   -n aws-guardian \
-  --from-literal=DATABASE_URL=postgresql://<postgres-user>:<postgres-password>@guardian-postgres:5432/<postgres-db>
+  --from-literal=DATABASE_URL=postgresql://<postgres-user>:<postgres-password>@guardian-postgres:5432/<postgres-db> \
   --dry-run=client -o yaml | kubectl apply -f -
 ```
 
@@ -144,7 +144,26 @@ kubectl -n aws-guardian exec deploy/guardian-postgres -- \
   psql -U guardian_user -d guardian -c "SELECT service, resource_type, COUNT(*) FROM resources GROUP BY service, resource_type ORDER BY service;"
 ```
 
-## Scanner Job
+## Persistent batch reports
+
+Apply the separate reports PVC:
+
+```bash
+kubectl apply -f k8s/reports-pvc.yaml
+```
+
+Confirm that both database and report storage are bound:
+
+```bash
+kubectl -n aws-guardian get pvc
+```
+
+The scanner workloads mount `guardian-reports-pvc` at `/app/reports`. This
+preserves scanner reports, timestamped JSON snapshots, and Markdown diff
+reports between completed Job Pods. The volume contains private AWS inventory
+and must not be exported to the repository.
+
+## Unified batch Job
 
 Apply one-off scanner Job:
 
@@ -164,6 +183,15 @@ View logs:
 kubectl -n aws-guardian logs job/aws-guardian-scan
 ```
 
+The Job runs:
+
+```text
+python -m app.snapshots.run_guardian_batch --write-db
+```
+
+The first run writes a snapshot and skips its diff. Later runs compare against
+the previous snapshot retained on `guardian-reports-pvc`.
+
 Delete and rerun one-off Job:
 
 ```bash
@@ -171,13 +199,17 @@ kubectl -n aws-guardian delete job aws-guardian-scan
 kubectl apply -f k8s/scanner-job.yaml
 ```
 
-## Scanner CronJob
+## Unified batch CronJob
 
 Apply CronJob:
 
 ```bash
 kubectl apply -f k8s/scanner-cronjob.yaml
 ```
+
+The CronJob uses the same unified batch command as the one-off Job. Its
+`Forbid` concurrency policy prevents overlapping runs from writing snapshots
+to the reports PVC simultaneously.
 
 Check CronJob:
 
@@ -219,6 +251,9 @@ kubectl -n aws-guardian patch cronjob aws-guardian-scan \
 ```
 
 ## Cleanup
+
+Warning: deleting the namespace or kind cluster also deletes the PostgreSQL and
+report PVC data, including retained snapshot history.
 
 Delete Kubernetes app resources:
 

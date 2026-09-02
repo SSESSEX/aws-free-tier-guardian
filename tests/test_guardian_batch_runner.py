@@ -5,7 +5,11 @@ from datetime import datetime, timezone
 import pytest
 
 from app.snapshots.guardian_report import create_snapshot_from_guardian_report_file
-from app.snapshots.run_guardian_batch import main, run_guardian_batch
+from app.snapshots.run_guardian_batch import (
+    main,
+    run_guardian_batch,
+    run_guardian_scanner,
+)
 
 
 def _write_sample_guardian_report(path, *, public_bucket=False):
@@ -44,6 +48,43 @@ def _write_sample_guardian_report(path, *, public_bucket=False):
         ),
         encoding="utf-8",
     )
+
+
+@pytest.mark.parametrize(
+    ("write_db", "expected_command"),
+    [
+        (False, ["/example/python", "-m", "app.scanner.run_all"]),
+        (
+            True,
+            ["/example/python", "-m", "app.scanner.run_all", "--write-db"],
+        ),
+    ],
+)
+def test_run_guardian_scanner_builds_expected_command(
+    monkeypatch,
+    write_db,
+    expected_command,
+):
+    captured = {}
+
+    def fake_run(command, **kwargs):
+        captured["command"] = command
+        captured["kwargs"] = kwargs
+        return subprocess.CompletedProcess(command, 0, "scanner ok", "")
+
+    monkeypatch.setattr("app.snapshots.run_guardian_batch.subprocess.run", fake_run)
+
+    run_guardian_scanner(
+        python_executable="/example/python",
+        write_db=write_db,
+    )
+
+    assert captured["command"] == expected_command
+    assert captured["kwargs"] == {
+        "check": False,
+        "capture_output": True,
+        "text": True,
+    }
 
 
 def test_run_guardian_batch_runs_scanner_then_creates_snapshot(
@@ -184,3 +225,37 @@ def test_main_returns_zero_for_successful_batch_run(tmp_path, monkeypatch):
 
     assert exit_code == 0
     assert list(snapshot_dir.glob("aws-config-*.json"))
+
+
+def test_main_write_db_flag_is_forwarded_to_scanner(tmp_path, monkeypatch):
+    report_path = tmp_path / "aws_guardian_report.json"
+    snapshot_dir = tmp_path / "snapshots"
+    diff_report_dir = tmp_path / "diffs"
+    captured = {}
+
+    def fake_run(command, **kwargs):
+        captured["command"] = command
+        _write_sample_guardian_report(report_path)
+        return subprocess.CompletedProcess(
+            args=command,
+            returncode=0,
+            stdout="scanner ok",
+            stderr="",
+        )
+
+    monkeypatch.setattr("app.snapshots.run_guardian_batch.subprocess.run", fake_run)
+
+    exit_code = main(
+        [
+            "--write-db",
+            "--scanner-report-path",
+            str(report_path),
+            "--snapshot-dir",
+            str(snapshot_dir),
+            "--report-dir",
+            str(diff_report_dir),
+        ]
+    )
+
+    assert exit_code == 0
+    assert captured["command"][-1] == "--write-db"

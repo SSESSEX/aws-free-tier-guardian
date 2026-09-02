@@ -31,6 +31,8 @@ The scanner produces:
 
 * JSON scan reports
 * Markdown executive reports
+* Timestamped JSON snapshots
+* Markdown snapshot diff reports
 * PostgreSQL persistence
 * Global risk summaries
 * Service-level findings
@@ -41,7 +43,7 @@ The scanner produces:
 Current test coverage:
 
 ```text
-154 passing tests
+206 passing tests
 ```
 
 ---
@@ -59,7 +61,11 @@ Global summary builder
   ↓
 JSON report + Markdown executive report
   ↓
-PostgreSQL persistence
+optional PostgreSQL persistence
+  ↓
+timestamped JSON snapshot
+  ↓
+snapshot comparison + Markdown diff
   ↓
 Docker Compose / Kubernetes CronJob execution
 ```
@@ -139,6 +145,18 @@ Run all scanners and persist results to PostgreSQL:
 python3 -m app.scanner.run_all --write-db
 ```
 
+Run the unified scan, snapshot, and diff pipeline:
+
+```bash
+./scripts/run_guardian_batch.sh
+```
+
+Run the unified pipeline and also persist scan data to PostgreSQL:
+
+```bash
+./scripts/run_guardian_batch.sh --write-db
+```
+
 Run tests locally:
 
 ```bash
@@ -165,7 +183,7 @@ docker compose up -d postgres
 Run the scanner through Docker Compose:
 
 ```bash
-docker compose run --rm scanner python -m app.scanner.run_all --write-db
+docker compose run --rm scanner python -m app.snapshots.run_guardian_batch --write-db
 ```
 
 Run tests through Docker Compose:
@@ -190,6 +208,7 @@ Kubernetes resources include:
 
 * Namespace
 * PostgreSQL PersistentVolumeClaim
+* Snapshot and report PersistentVolumeClaim
 * PostgreSQL Deployment
 * PostgreSQL Service
 * Scanner Job
@@ -209,12 +228,13 @@ Apply Kubernetes resources:
 ```bash
 kubectl apply -f k8s/namespace.yaml
 kubectl apply -f k8s/postgres-pvc.yaml
+kubectl apply -f k8s/reports-pvc.yaml
 kubectl apply -f k8s/postgres-deployment.yaml
 kubectl apply -f k8s/postgres-service.yaml
 kubectl apply -f k8s/scanner-cronjob.yaml
 ```
 
-Trigger a manual scan from the CronJob:
+Trigger a manual unified batch run from the CronJob:
 
 ```bash
 kubectl -n aws-guardian create job manual-guardian-scan \

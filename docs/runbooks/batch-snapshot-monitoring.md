@@ -43,8 +43,10 @@ This workflow implements the batch-first decision recorded in
 collect → snapshot → compare → report → persist
 ```
 
-Persistence currently means local JSON snapshots and Markdown diff reports.
-PostgreSQL history and scheduled execution are optional later improvements.
+Persistence always includes JSON snapshots and Markdown diff reports. The
+optional `--write-db` flag also uses the existing PostgreSQL writer for scan,
+resource, and finding records. Snapshot changes themselves are not stored in
+PostgreSQL. The Kubernetes CronJob provides scheduled local-cluster execution.
 
 ## Prerequisites
 
@@ -84,6 +86,12 @@ Run the full scan, snapshot, and diff loop:
 python -m app.snapshots.run_guardian_batch
 ```
 
+Add existing PostgreSQL persistence to the same batch run when required:
+
+```bash
+python -m app.snapshots.run_guardian_batch --write-db
+```
+
 The repository also provides a Bash wrapper for repeatable local execution:
 
 ```bash
@@ -99,17 +107,25 @@ are forwarded unchanged. For example:
 ./scripts/run_guardian_batch.sh --snapshot-name portfolio-scan
 ```
 
+The wrapper also forwards the database option:
+
+```bash
+./scripts/run_guardian_batch.sh --write-db
+```
+
 The command runs these steps in order:
 
 1. Run `app.scanner.run_all` as a subprocess.
-2. Confirm that `reports/aws_guardian_report.json` was produced.
-3. Convert the nested Guardian report into flat snapshot resources.
-4. Save a timestamped JSON snapshot.
-5. Load the latest and previous snapshots when both exist.
-6. Write a Markdown diff report.
+2. Optionally persist existing scan, resource, and finding records to
+   PostgreSQL when `--write-db` is supplied.
+3. Confirm that `reports/aws_guardian_report.json` was produced.
+4. Convert the nested Guardian report into flat snapshot resources.
+5. Save a timestamped JSON snapshot.
+6. Load the latest and previous snapshots when both exist.
+7. Write a Markdown diff report.
 
-The batch command does not enable PostgreSQL persistence and does not schedule
-future runs.
+PostgreSQL persistence is opt-in. It does not change the file-based snapshot or
+diff behavior.
 
 ## Expected Output
 
@@ -118,6 +134,7 @@ On the first successful run, expect output similar to:
 ```text
 Guardian batch run completed successfully.
 Scanner report: reports/aws_guardian_report.json
+PostgreSQL persistence: skipped
 Snapshot saved: reports/snapshots/aws-config-<timestamp>.json
 Snapshot resources: <resource-count>
 Diff report skipped: fewer than two snapshots are available.
@@ -131,6 +148,7 @@ On a later successful run, expect:
 ```text
 Guardian batch run completed successfully.
 Scanner report: reports/aws_guardian_report.json
+PostgreSQL persistence: skipped
 Snapshot saved: reports/snapshots/aws-config-<timestamp>.json
 Snapshot resources: <resource-count>
 Diff report written: reports/snapshot-diffs/aws-config-<timestamp>-diff.md
@@ -332,12 +350,13 @@ Do not commit the report while investigating.
 
 Keep subsequent changes small and testable. Suitable next steps are:
 
-1. Add a Bash wrapper that resolves the repository root and uses `.venv` when
-   available.
-2. Add structured JSON diff output alongside the Markdown report.
-3. Add optional PostgreSQL history after the file-based output is stable.
-4. Add scheduled execution after the manual batch workflow is documented and
-   reliable.
+1. Define a retention policy so scheduled snapshots cannot fill the reports
+   PVC indefinitely.
+2. Add structured JSON diff output only when a machine-readable consumer needs
+   it.
+3. Persist resource-change history when historical diff queries become a real
+   requirement.
+4. Add monitoring for failed scheduled batch Jobs.
 
 Event-driven monitoring remains a future extension. The current honest project
 description is **batch governance monitoring tool**.

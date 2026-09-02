@@ -3,9 +3,10 @@
 This module runs the Guardian scanner, converts the scanner JSON report into a
 timestamped snapshot, and writes a diff report when a previous snapshot exists.
 
-It is the first end-to-end batch automation entry point:
+It is the first end-to-end batch automation entry point. PostgreSQL persistence
+can be enabled explicitly and remains disabled by default:
 
-scan -> report JSON -> snapshot -> diff -> Markdown report
+scan -> report JSON -> optional PostgreSQL -> snapshot -> diff -> Markdown report
 """
 
 from __future__ import annotations
@@ -42,11 +43,17 @@ def run_guardian_scanner(
     *,
     scanner_module: str = DEFAULT_SCANNER_MODULE,
     python_executable: str = sys.executable,
+    write_db: bool = False,
 ) -> subprocess.CompletedProcess[str]:
     """Run the Guardian scanner as a Python module."""
 
+    command = [python_executable, "-m", scanner_module]
+
+    if write_db:
+        command.append("--write-db")
+
     return subprocess.run(
-        [python_executable, "-m", scanner_module],
+        command,
         check=False,
         capture_output=True,
         text=True,
@@ -61,12 +68,18 @@ def run_guardian_batch(
     report_dir: str | Path = DEFAULT_DIFF_REPORT_DIR,
     snapshot_name: str = DEFAULT_SNAPSHOT_NAME,
     python_executable: str = sys.executable,
+    write_db: bool = False,
 ) -> GuardianBatchRunResult:
-    """Run the scanner and create a timestamped snapshot from its JSON report."""
+    """Run the scanner and create a timestamped snapshot from its JSON report.
+
+    When write_db is true, the scanner also persists its existing scan, resource,
+    and finding records to PostgreSQL before snapshot processing continues.
+    """
 
     scanner_result = run_guardian_scanner(
         scanner_module=scanner_module,
         python_executable=python_executable,
+        write_db=write_db,
     )
 
     if scanner_result.returncode != 0:
@@ -114,6 +127,12 @@ def _parse_args(argv: Sequence[str]) -> argparse.Namespace:
     )
 
     parser.add_argument(
+        "--write-db",
+        action="store_true",
+        help="Persist scanner results to PostgreSQL before snapshot processing.",
+    )
+
+    parser.add_argument(
         "--scanner-report-path",
         default=str(DEFAULT_GUARDIAN_REPORT_PATH),
         help="Expected JSON report path produced by the scanner.",
@@ -152,6 +171,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             snapshot_dir=args.snapshot_dir,
             report_dir=args.report_dir,
             snapshot_name=args.snapshot_name,
+            write_db=args.write_db,
         )
     except Exception as exc:
         print(f"Error: {exc}", file=sys.stderr)
@@ -161,6 +181,10 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     print("Guardian batch run completed successfully.")
     print(f"Scanner report: {result.scanner_report_path}")
+    print(
+        "PostgreSQL persistence: "
+        + ("enabled" if args.write_db else "skipped")
+    )
     print(f"Snapshot saved: {snapshot_result.snapshot_path}")
     print(f"Snapshot resources: {snapshot_result.resource_count}")
 
