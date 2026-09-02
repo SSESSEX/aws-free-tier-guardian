@@ -285,6 +285,17 @@ Cost-safety guardrails are documented in [`docs/cost-safety-guardrails.md`](docs
 
 ## Example Output
 
+A fully sanitised batch-monitoring example is available without exposing local
+AWS inventory:
+
+* [Previous JSON snapshot](examples/snapshot-monitoring/aws-config-before.example.json)
+* [Current JSON snapshot](examples/snapshot-monitoring/aws-config-after.example.json)
+* [Generated Markdown diff](examples/snapshot-monitoring/aws-config-diff.example.md)
+
+The example uses invented resource identifiers and demonstrates added,
+removed, changed, and unchanged resources. Real runtime output remains ignored
+under `reports/`.
+
 Example console summary:
 
 ```text

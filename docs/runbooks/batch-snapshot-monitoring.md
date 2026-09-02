@@ -207,6 +207,16 @@ Unchanged resources
 Changed resources also list the top-level fields that differ. The report does
 not call AWS; it is generated entirely from the two saved snapshot files.
 
+A committed, fully sanitised example demonstrates the complete comparison
+without publishing local AWS inventory:
+
+- [Previous JSON snapshot](../../examples/snapshot-monitoring/aws-config-before.example.json)
+- [Current JSON snapshot](../../examples/snapshot-monitoring/aws-config-after.example.json)
+- [Generated Markdown diff](../../examples/snapshot-monitoring/aws-config-diff.example.md)
+
+The example data is invented. Runtime snapshots and diff reports must remain
+under the ignored `reports/` directory.
+
 ## How to Interpret the Report
 
 | Category | Meaning | Suggested review |

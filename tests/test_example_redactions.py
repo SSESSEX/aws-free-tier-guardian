@@ -1,13 +1,23 @@
-from pathlib import Path
 import re
+from pathlib import Path
 
 
-EXAMPLES_DIR = Path("examples")
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+EXAMPLES_DIR = PROJECT_ROOT / "examples"
 
-EXAMPLE_FILES = [
+REQUIRED_EXAMPLE_FILES = [
     EXAMPLES_DIR / "aws_guardian_report.example.json",
     EXAMPLES_DIR / "aws_guardian_report.example.md",
+    EXAMPLES_DIR / "snapshot-monitoring" / "aws-config-before.example.json",
+    EXAMPLES_DIR / "snapshot-monitoring" / "aws-config-after.example.json",
+    EXAMPLES_DIR / "snapshot-monitoring" / "aws-config-diff.example.md",
 ]
+
+EXAMPLE_FILES = sorted(
+    path
+    for path in EXAMPLES_DIR.rglob("*")
+    if path.is_file() and path.suffix in {".json", ".md"}
+)
 
 
 FORBIDDEN_PATTERNS = [
@@ -23,7 +33,7 @@ FORBIDDEN_PATTERNS = [
 
 
 def test_example_report_files_exist():
-    for file_path in EXAMPLE_FILES:
+    for file_path in REQUIRED_EXAMPLE_FILES:
         assert file_path.exists(), f"Missing example file: {file_path}"
 
 

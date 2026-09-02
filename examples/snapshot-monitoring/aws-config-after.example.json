@@ -1,0 +1,82 @@
+{
+  "collected_at": "2026-01-15T10:00:00Z",
+  "metadata": {
+    "data_classification": "sanitised-example",
+    "source": "invented-fixture"
+  },
+  "resource_count": 4,
+  "resources": [
+    {
+      "aws_profile": "example-profile",
+      "aws_region": "eu-west-2",
+      "configuration": {
+        "instance_type": "t3.micro",
+        "state": "stopped",
+        "tags": {
+          "Environment": "Example",
+          "Project": "GuardianDemo"
+        }
+      },
+      "resource_id": "ec2:instance:i-example-web",
+      "resource_type": "instance",
+      "service": "ec2",
+      "source_resource_id": "i-example-web"
+    },
+    {
+      "aws_profile": "example-profile",
+      "aws_region": "eu-west-2",
+      "configuration": {
+        "encryption": {
+          "algorithm": "AES256",
+          "enabled": true
+        },
+        "name": "example-archive-bucket",
+        "versioning": {
+          "status": "Enabled"
+        }
+      },
+      "resource_id": "s3:bucket:example-archive-bucket",
+      "resource_type": "bucket",
+      "service": "s3",
+      "source_resource_id": "example-archive-bucket"
+    },
+    {
+      "aws_profile": "example-profile",
+      "aws_region": "eu-west-2",
+      "configuration": {
+        "encryption": {
+          "algorithm": "AES256",
+          "enabled": true
+        },
+        "name": "example-ingest-bucket",
+        "versioning": {
+          "status": "Enabled"
+        }
+      },
+      "resource_id": "s3:bucket:example-ingest-bucket",
+      "resource_type": "bucket",
+      "service": "s3",
+      "source_resource_id": "example-ingest-bucket"
+    },
+    {
+      "aws_profile": "example-profile",
+      "aws_region": "eu-west-2",
+      "configuration": {
+        "description": "Invented replacement application security group",
+        "inbound_rules": [],
+        "outbound_rules": [],
+        "tags": {
+          "Environment": "Example",
+          "Project": "GuardianDemo"
+        }
+      },
+      "resource_id": "security_groups:security_group:sg-example-new",
+      "resource_type": "security_group",
+      "service": "security_groups",
+      "source_resource_id": "sg-example-new"
+    }
+  ],
+  "schema_version": "1.0",
+  "snapshot_id": "aws-config-20260115T100000Z",
+  "snapshot_name": "aws-config"
+}
