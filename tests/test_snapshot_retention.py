@@ -85,6 +85,34 @@ def test_retention_orders_by_filename_not_modification_time(tmp_path):
     assert result.deleted_reports == tuple(reports[:2])
 
 
+def test_retention_caps_structured_json_diffs_and_ignores_other_json(tmp_path):
+    report_dir = tmp_path / "diffs"
+    json_reports = _write_history(report_dir, 673, suffix="-diff.json")
+    unrelated_json = report_dir / "aws-config-20260801T000000Z.json"
+    malformed_json = report_dir / "aws-config-20261301T000000Z-diff.json"
+    target = tmp_path / "outside.json"
+    target.write_text("keep", encoding="utf-8")
+    symlink = report_dir / "aws-config-20270101T000000Z-diff.json"
+    symlink.symlink_to(target)
+    for path in (unrelated_json, malformed_json):
+        path.write_text("keep", encoding="utf-8")
+
+    result = prune_snapshot_history(
+        retention_count=672,
+        snapshot_dir=tmp_path / "snapshots",
+        report_dir=report_dir,
+    )
+
+    assert result.deleted_json_reports == (json_reports[0],)
+    assert result.deleted_reports == ()
+    assert result.deleted_snapshots == ()
+    assert all(path.exists() for path in json_reports[1:])
+    assert unrelated_json.read_text(encoding="utf-8") == "keep"
+    assert malformed_json.read_text(encoding="utf-8") == "keep"
+    assert symlink.is_symlink()
+    assert target.read_text(encoding="utf-8") == "keep"
+
+
 def test_retention_leaves_unrelated_and_malformed_files_untouched(tmp_path):
     snapshot_dir = tmp_path / "snapshots"
     report_dir = tmp_path / "diffs"
@@ -247,6 +275,7 @@ def test_retention_missing_directories_is_a_noop(tmp_path):
 
     assert result.deleted_snapshots == ()
     assert result.deleted_reports == ()
+    assert result.deleted_json_reports == ()
     assert list(tmp_path.iterdir()) == []
 
 

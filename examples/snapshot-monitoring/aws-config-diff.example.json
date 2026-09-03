@@ -1,0 +1,111 @@
+{
+  "changes": [
+    {
+      "after": {
+        "aws_profile": "example-profile",
+        "aws_region": "eu-west-2",
+        "configuration": {
+          "encryption": {
+            "algorithm": "AES256",
+            "enabled": true
+          },
+          "name": "example-ingest-bucket",
+          "versioning": {
+            "status": "Enabled"
+          }
+        },
+        "resource_id": "s3:bucket:example-ingest-bucket",
+        "resource_type": "bucket",
+        "service": "s3",
+        "source_resource_id": "example-ingest-bucket"
+      },
+      "before": {
+        "aws_profile": "example-profile",
+        "aws_region": "eu-west-2",
+        "configuration": {
+          "encryption": {
+            "algorithm": "AES256",
+            "enabled": true
+          },
+          "name": "example-ingest-bucket",
+          "versioning": {
+            "status": "Disabled"
+          }
+        },
+        "resource_id": "s3:bucket:example-ingest-bucket",
+        "resource_type": "bucket",
+        "service": "s3",
+        "source_resource_id": "example-ingest-bucket"
+      },
+      "change_type": "changed",
+      "changed_fields": [
+        "configuration"
+      ],
+      "resource_id": "s3:bucket:example-ingest-bucket"
+    },
+    {
+      "after": {
+        "aws_profile": "example-profile",
+        "aws_region": "eu-west-2",
+        "configuration": {
+          "description": "Invented replacement application security group",
+          "inbound_rules": [],
+          "outbound_rules": [],
+          "tags": {
+            "Environment": "Example",
+            "Project": "GuardianDemo"
+          }
+        },
+        "resource_id": "security_groups:security_group:sg-example-new",
+        "resource_type": "security_group",
+        "service": "security_groups",
+        "source_resource_id": "sg-example-new"
+      },
+      "before": null,
+      "change_type": "added",
+      "changed_fields": [],
+      "resource_id": "security_groups:security_group:sg-example-new"
+    },
+    {
+      "after": null,
+      "before": {
+        "aws_profile": "example-profile",
+        "aws_region": "eu-west-2",
+        "configuration": {
+          "description": "Invented legacy application security group",
+          "inbound_rules": [],
+          "outbound_rules": [],
+          "tags": {
+            "Environment": "Example",
+            "Project": "GuardianDemo"
+          }
+        },
+        "resource_id": "security_groups:security_group:sg-example-old",
+        "resource_type": "security_group",
+        "service": "security_groups",
+        "source_resource_id": "sg-example-old"
+      },
+      "change_type": "removed",
+      "changed_fields": [],
+      "resource_id": "security_groups:security_group:sg-example-old"
+    }
+  ],
+  "current_snapshot": {
+    "collected_at": "2026-01-15T10:00:00Z",
+    "snapshot_id": "aws-config-20260115T100000Z"
+  },
+  "key_field": "resource_id",
+  "previous_snapshot": {
+    "collected_at": "2026-01-15T09:00:00Z",
+    "snapshot_id": "aws-config-20260115T090000Z"
+  },
+  "schema_version": "1.0",
+  "summary": {
+    "added_count": 1,
+    "changed_count": 1,
+    "current_count": 4,
+    "previous_count": 4,
+    "removed_count": 1,
+    "unchanged_count": 2
+  }
+}

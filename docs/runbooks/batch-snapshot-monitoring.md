@@ -29,6 +29,7 @@ reports/snapshots/aws-config-<timestamp>.json
 compare the latest two snapshots
         ↓
 reports/snapshot-diffs/aws-config-<timestamp>-diff.md
+reports/snapshot-diffs/aws-config-<timestamp>-diff.json
         ↓
 optional count-based snapshot and diff retention
 ```
@@ -45,7 +46,7 @@ This workflow implements the batch-first decision recorded in
 collect → snapshot → compare → report → persist
 ```
 
-Persistence always includes JSON snapshots and Markdown diff reports. The
+Persistence always includes JSON snapshots plus Markdown and JSON diff reports. The
 optional `--write-db` flag also uses the existing PostgreSQL writer for scan,
 resource, and finding records. Snapshot changes themselves are not stored in
 PostgreSQL. The Kubernetes CronJob provides scheduled local-cluster execution.
@@ -132,9 +133,9 @@ The command runs these steps in order:
 4. Convert the nested Guardian report into flat snapshot resources.
 5. Save a timestamped JSON snapshot.
 6. Load the latest and previous snapshots when both exist.
-7. Write a Markdown diff report.
+7. Write Markdown and structured JSON diff reports from the same comparison.
 8. If `--retention-count N` was supplied, keep at most the newest N snapshots
-   and N Markdown diffs for the selected snapshot name.
+   and N reports of each diff format for the selected snapshot name.
 
 PostgreSQL persistence is opt-in. It does not change the file-based snapshot or
 diff behavior.
@@ -168,6 +169,7 @@ PostgreSQL persistence: skipped
 Snapshot saved: reports/snapshots/aws-config-<timestamp>.json
 Snapshot resources: <resource-count>
 Diff report written: reports/snapshot-diffs/aws-config-<timestamp>-diff.md
+JSON diff report written: reports/snapshot-diffs/aws-config-<timestamp>-diff.json
 ```
 
 The resource count depends on the services and resources visible to the
@@ -221,13 +223,19 @@ Diff reports are written to:
 reports/snapshot-diffs/
 ```
 
-The default filename format is:
+The Markdown filename format is:
 
 ```text
 aws-config-YYYYMMDDTHHMMSSZ-diff.md
 ```
 
-Each report identifies the previous and current snapshots and summarizes:
+The machine-readable filename format is:
+
+```text
+aws-config-YYYYMMDDTHHMMSSZ-diff.json
+```
+
+Both reports identify the previous and current snapshots and summarize:
 
 ```text
 Previous resources
@@ -238,8 +246,26 @@ Changed resources
 Unchanged resources
 ```
 
-Changed resources also list the top-level fields that differ. The report does
-not call AWS; it is generated entirely from the two saved snapshot files.
+Changed resources also list the top-level fields that differ. Neither report
+calls AWS; both are generated from the same in-memory comparison of two saved
+snapshots.
+
+The JSON document has a versioned contract:
+
+```text
+schema_version
+key_field
+previous_snapshot
+current_snapshot
+summary
+changes
+```
+
+Each actionable event has a `change_type`, `resource_id`, `changed_fields`,
+`before`, and `after`. Added events have a null `before`; removed events have a
+null `after`; changed events contain both states. Unchanged resources are not
+duplicated in the diff file—their count remains in `summary`. Events are sorted
+by resource ID for deterministic output.
 
 A committed, fully sanitised example demonstrates the complete comparison
 without publishing local AWS inventory:
@@ -247,6 +273,7 @@ without publishing local AWS inventory:
 - [Previous JSON snapshot](../../examples/snapshot-monitoring/aws-config-before.example.json)
 - [Current JSON snapshot](../../examples/snapshot-monitoring/aws-config-after.example.json)
 - [Generated Markdown diff](../../examples/snapshot-monitoring/aws-config-diff.example.md)
+- [Generated structured JSON diff](../../examples/snapshot-monitoring/aws-config-diff.example.json)
 
 The example data is invented. Runtime snapshots and diff reports must remain
 under the ignored `reports/` directory.
@@ -285,6 +312,7 @@ Cleanup matches only these exact formats for the selected `--snapshot-name`
 ```text
 reports/snapshots/aws-config-YYYYMMDDTHHMMSSZ.json
 reports/snapshot-diffs/aws-config-YYYYMMDDTHHMMSSZ-diff.md
+reports/snapshot-diffs/aws-config-YYYYMMDDTHHMMSSZ-diff.json
 ```
 
 The timestamp must be a valid date and time. With custom `--snapshot-dir` or
@@ -296,7 +324,7 @@ not deleted or counted. A directory that is itself a symlink is rejected.
 After a successful run, logs include a line such as:
 
 ```text
-Retention: kept at most 672 snapshots and 672 diff reports; deleted snapshots=3, diff_reports=3.
+Retention: kept at most 672 snapshots and 672 reports of each diff format; deleted snapshots=3, markdown_diff_reports=3, json_diff_reports=3.
 ```
 
 Zero deletions is normal when history is below the cap. Omitting the flag means
@@ -312,8 +340,9 @@ report stays readable, but reproducing that comparison requires both snapshots.
 
 ### Scheduled Kubernetes policy
 
-The CronJob supplies `--write-db --retention-count 672`. At one successful run
-every 15 minutes, that is approximately seven days of history (96 runs/day).
+The CronJob supplies `--write-db --retention-count 672`. It keeps at most 672
+snapshots, 672 Markdown diffs, and 672 JSON diffs. At one successful run every
+15 minutes, that is approximately seven days of history (96 runs/day).
 Extra manual runs shorten that window; missed runs lengthen it. This is a
 file-count policy, not an age policy or a guarantee of staying below 1 GiB.
 Larger snapshots and unrelated output still require disk-usage monitoring.
@@ -395,7 +424,7 @@ python -m app.snapshots.run_guardian_batch \
   --scanner-report-path path/to/aws_guardian_report.json
 ```
 
-### The diff report is skipped
+### The diff reports are skipped
 
 The latest-two comparison requires at least two snapshot files with the same
 snapshot name. Run the batch monitor again after the account state is collected
@@ -416,8 +445,9 @@ python -m app.snapshots.guardian_report \
   --input reports/aws_guardian_report.json
 ```
 
-This creates a new snapshot from the existing report and writes a diff report
-when a previous snapshot is available. It does not perform a fresh AWS scan.
+This creates a new snapshot from the existing report and writes both diff
+reports when a previous snapshot is available. It does not perform a fresh AWS
+scan.
 
 ### The snapshot count is lower than expected
 
@@ -450,12 +480,10 @@ python -m pytest tests/test_snapshot_retention.py \
 
 Keep subsequent changes small and testable. Suitable next steps are:
 
-1. Add structured JSON diff output only when a machine-readable consumer needs
-   it.
-2. Persist resource-change history when historical diff queries become a real
-   requirement.
-3. Add monitoring for failed scheduled batch Jobs and report-volume usage.
-4. Define a separate PostgreSQL history-retention policy.
+1. Persist the structured resource-change events when historical diff queries
+   become a real requirement.
+2. Add monitoring for failed scheduled batch Jobs and report-volume usage.
+3. Define a separate PostgreSQL history-retention policy.
 
 Event-driven monitoring remains a future extension. The current honest project
 description is **batch governance monitoring tool**.

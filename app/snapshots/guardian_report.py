@@ -264,7 +264,7 @@ def create_snapshot_from_guardian_report_file(
     snapshot_name: str = DEFAULT_SNAPSHOT_NAME,
     collected_at: datetime | None = None,
 ) -> GuardianSnapshotResult:
-    """Convert a Guardian report into a snapshot and optional diff report."""
+    """Convert a Guardian report into a snapshot and optional diff reports."""
 
     guardian_report = load_guardian_report(report_path)
     resources = extract_guardian_snapshot_resources(guardian_report)
@@ -300,7 +300,7 @@ def _parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
             "Convert a Guardian scanner JSON report into a timestamped snapshot "
-            "and create a diff report when a previous snapshot exists."
+            "and create diff reports when a previous snapshot exists."
         )
     )
 
@@ -354,6 +354,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         print("Diff report skipped: fewer than two snapshots are available.")
     else:
         print(f"Diff report written: {result.diff_report.report_path}")
+        print(f"JSON diff report written: {result.diff_report.json_report_path}")
 
     return 0
 

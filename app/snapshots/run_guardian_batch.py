@@ -1,12 +1,12 @@
 """Batch runner for AWS Free-Tier Guardian snapshot monitoring.
 
 This module runs the Guardian scanner, converts the scanner JSON report into a
-timestamped snapshot, and writes a diff report when a previous snapshot exists.
+timestamped snapshot, and writes diff reports when a previous snapshot exists.
 
 It is the first end-to-end batch automation entry point. PostgreSQL persistence
 can be enabled explicitly and remains disabled by default:
 
-scan -> report JSON -> optional PostgreSQL -> snapshot -> diff -> Markdown report
+scan -> report JSON -> optional PostgreSQL -> snapshot -> diff -> Markdown + JSON
      -> optional retention cleanup
 """
 
@@ -173,7 +173,8 @@ def _parse_args(argv: Sequence[str]) -> argparse.Namespace:
         metavar="N",
         help=(
             "After a successful run, permanently delete older generated files "
-            "to keep at most N snapshots and N Markdown diffs (minimum 2). "
+            "to keep at most N snapshots and N reports of each diff format "
+            "(minimum 2). "
             "Disabled when omitted."
         ),
     )
@@ -239,13 +240,20 @@ def main(argv: Sequence[str] | None = None) -> int:
         print("Diff report skipped: fewer than two snapshots are available.")
     else:
         print(f"Diff report written: {snapshot_result.diff_report.report_path}")
+        print(
+            "JSON diff report written: "
+            f"{snapshot_result.diff_report.json_report_path}"
+        )
 
     if result.retention_result is not None:
         print(
             f"Retention: kept at most {args.retention_count} snapshots and "
-            f"{args.retention_count} diff reports; deleted "
+            f"{args.retention_count} reports of each diff format; deleted "
             f"snapshots={len(result.retention_result.deleted_snapshots)}, "
-            f"diff_reports={len(result.retention_result.deleted_reports)}."
+            f"markdown_diff_reports="
+            f"{len(result.retention_result.deleted_reports)}, "
+            f"json_diff_reports="
+            f"{len(result.retention_result.deleted_json_reports)}."
         )
 
     return 0

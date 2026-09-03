@@ -26,6 +26,7 @@ class SnapshotRetentionResult:
 
     deleted_snapshots: tuple[Path, ...]
     deleted_reports: tuple[Path, ...]
+    deleted_json_reports: tuple[Path, ...]
 
 
 def validate_retention_count(retention_count: int) -> None:
@@ -77,14 +78,14 @@ def prune_snapshot_history(
     report_dir: str | Path = DEFAULT_DIFF_REPORT_DIR,
     snapshot_name: str = DEFAULT_SNAPSHOT_NAME,
 ) -> SnapshotRetentionResult:
-    """Keep at most N snapshots and N Markdown diffs for one snapshot name.
+    """Keep at most N snapshots and N reports of each diff format.
 
     Each directory is capped independently using the timestamp in the filename,
     never the filesystem modification time. Missing directories are a no-op.
     Unrelated files, invalid timestamps, subdirectories, and file symlinks are
     left untouched. Directory symlinks are rejected.
 
-    Both file lists are prepared before deleting anything. Deletion is permanent
+    All file lists are prepared before deleting anything. Deletion is permanent
     and filesystem errors propagate; already-completed deletions are not rolled
     back. Call this only after successfully generating the new batch artifacts.
     """
@@ -95,17 +96,22 @@ def prune_snapshot_history(
     snapshots = _list_generated_files(
         Path(snapshot_dir), snapshot_name=normalised_name, suffix=".json"
     )
-    reports = _list_generated_files(
+    markdown_reports = _list_generated_files(
         Path(report_dir), snapshot_name=normalised_name, suffix="-diff.md"
+    )
+    json_reports = _list_generated_files(
+        Path(report_dir), snapshot_name=normalised_name, suffix="-diff.json"
     )
 
     deleted_snapshots = tuple(snapshots[:-retention_count])
-    deleted_reports = tuple(reports[:-retention_count])
+    deleted_reports = tuple(markdown_reports[:-retention_count])
+    deleted_json_reports = tuple(json_reports[:-retention_count])
 
-    for path in (*deleted_snapshots, *deleted_reports):
+    for path in (*deleted_reports, *deleted_json_reports, *deleted_snapshots):
         path.unlink()
 
     return SnapshotRetentionResult(
         deleted_snapshots=deleted_snapshots,
         deleted_reports=deleted_reports,
+        deleted_json_reports=deleted_json_reports,
     )

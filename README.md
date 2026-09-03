@@ -26,6 +26,7 @@ AWS Free-Tier Guardian currently scans:
 * IAM access keys
 * CloudTrail trails
 * RDS DB instances
+* AWS Budgets
 
 The scanner produces:
 
@@ -33,6 +34,7 @@ The scanner produces:
 * Markdown executive reports
 * Timestamped JSON snapshots
 * Markdown snapshot diff reports
+* Structured JSON snapshot diff reports
 * Optional count-based snapshot and diff retention
 * PostgreSQL persistence
 * Global risk summaries
@@ -44,7 +46,7 @@ The scanner produces:
 Current test coverage:
 
 ```text
-252 passing tests
+261 passing tests
 ```
 
 ---
@@ -66,7 +68,7 @@ optional PostgreSQL persistence
   ↓
 timestamped JSON snapshot
   ↓
-snapshot comparison + Markdown diff
+snapshot comparison + Markdown and JSON diffs
   ↓
 Docker Compose / Kubernetes CronJob execution
 ```
@@ -159,7 +161,7 @@ Run the unified pipeline and also persist scan data to PostgreSQL:
 ```
 
 Opt into cleanup after a successful batch, keeping at most 672 snapshots and
-672 Markdown diffs:
+672 reports of each diff format:
 
 ```bash
 ./scripts/run_guardian_batch.sh --write-db --retention-count 672
@@ -247,9 +249,10 @@ kubectl apply -f k8s/scanner-cronjob.yaml
 ```
 
 The CronJob enables `--write-db --retention-count 672`, retaining roughly seven
-days of snapshots and diffs at the 15-minute schedule. This limits file counts,
-not storage bytes, and does not prune PostgreSQL. To update an existing cluster,
-follow the [retention deployment runbook](docs/kubernetes-runbook.md#deploy-a-retention-update).
+days of snapshots, Markdown diffs, and JSON diffs at the 15-minute schedule.
+This limits file counts, not storage bytes, and does not prune PostgreSQL. To
+update an existing cluster, follow the
+[retention deployment runbook](docs/kubernetes-runbook.md#deploy-a-retention-update).
 
 Before a manual run, suspend scheduled scans and wait for active scanner Jobs
 to finish; independently created Jobs are not covered by the CronJob's
@@ -333,6 +336,7 @@ AWS inventory:
 * [Previous JSON snapshot](examples/snapshot-monitoring/aws-config-before.example.json)
 * [Current JSON snapshot](examples/snapshot-monitoring/aws-config-after.example.json)
 * [Generated Markdown diff](examples/snapshot-monitoring/aws-config-diff.example.md)
+* [Generated structured JSON diff](examples/snapshot-monitoring/aws-config-diff.example.json)
 
 The example uses invented resource identifiers and demonstrates added,
 removed, changed, and unchanged resources. Real runtime output remains ignored

@@ -135,11 +135,20 @@ def test_create_snapshot_from_json_file_writes_report_when_previous_snapshot_exi
     assert result.diff_report.summary["added_count"] == 1
     assert result.diff_report.summary["changed_count"] == 1
     assert result.diff_report.report_path.exists()
+    assert result.diff_report.json_report_path.exists()
 
     report_content = result.diff_report.report_path.read_text(encoding="utf-8")
 
     assert "`bucket-a` changed fields: `public`" in report_content
     assert "`bucket-b`" in report_content
+
+    json_report = json.loads(
+        result.diff_report.json_report_path.read_text(encoding="utf-8")
+    )
+    assert {change["resource_id"] for change in json_report["changes"]} == {
+        "bucket-a",
+        "bucket-b",
+    }
 
 
 def test_main_saves_snapshot_from_cli_args(tmp_path):

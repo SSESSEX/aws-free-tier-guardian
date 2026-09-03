@@ -164,7 +164,7 @@ Provisioning waits for a Pod that uses the claim. This is expected behavior,
 not a reason to delete the PVC. See [volume binding mode](https://kubernetes.io/docs/concepts/storage/storage-classes/#volume-binding-mode).
 
 The scanner workloads mount `guardian-reports-pvc` at `/app/reports`. This
-preserves scanner reports, timestamped JSON snapshots, and Markdown diff
+preserves scanner reports, timestamped JSON snapshots, and Markdown/JSON diff
 reports between completed Job Pods. The volume contains private AWS inventory
 and must not be exported to the repository.
 
@@ -219,9 +219,10 @@ python -m app.snapshots.run_guardian_batch --write-db --retention-count 672
 ```
 
 After a successful batch it permanently deletes older matching files to retain
-at most 672 timestamped snapshots and 672 Markdown diffs. At the configured
-15-minute cadence this is approximately seven days, not an exact age window
-or byte limit. PostgreSQL records and current scanner reports are untouched.
+at most 672 timestamped snapshots, 672 Markdown diffs, and 672 structured JSON
+diffs. At the configured 15-minute cadence this is approximately seven days,
+not an exact age window or byte limit. PostgreSQL records and current scanner
+reports are untouched.
 Back up required history privately before enabling this policy. For details,
 see [Snapshot Retention](runbooks/batch-snapshot-monitoring.md#snapshot-retention).
 

@@ -17,6 +17,7 @@ flowchart TD
     B --> I[IAM Access Key Scanner]
     B --> J[CloudTrail Scanner]
     B --> K[RDS Scanner]
+    B --> BA[AWS Budgets Scanner]
 
     C --> L[Rule Evaluation Engine]
     D --> L
@@ -27,13 +28,22 @@ flowchart TD
     I --> L
     J --> L
     K --> L
+    BA --> L
 
     L --> M[Service-Level Summaries]
     M --> N[Global Summary Builder]
 
-    N --> O[JSON Report]
+    N --> O[JSON Scan Report]
     N --> P[Markdown Executive Report]
     N --> Q[PostgreSQL Persistence]
+
+    O --> Y[Snapshot Adapter]
+    Y --> Z[Timestamped JSON Snapshots]
+    Z --> AA[Deterministic Diff Engine]
+    AA --> AB[Markdown Diff Report]
+    AA --> AC[Structured JSON Change Events]
+    AB --> AD[Count-Based File Retention]
+    AC --> AD
 
     Q --> R[scan_runs]
     Q --> S[resources]
@@ -53,6 +63,7 @@ sequenceDiagram
     participant AWS as AWS APIs
     participant Rules as Rule Engine
     participant Reports as Report Writers
+    participant Snapshots as Snapshot Pipeline
     participant DB as PostgreSQL
 
     User->>Runner: Run scanner
@@ -62,6 +73,10 @@ sequenceDiagram
     Rules-->>Runner: Return findings
     Runner->>Reports: Build JSON and Markdown reports
     Runner->>DB: Persist scan run, resources, and findings
+    Runner->>Snapshots: Flatten and save timestamped state
+    Snapshots->>Snapshots: Compare latest two snapshots
+    Snapshots-->>Runner: Return Markdown and JSON diffs
+    Runner->>Snapshots: Apply optional file-count retention
     Runner-->>User: Print summary and top risks
 ```
 
@@ -77,7 +92,7 @@ erDiagram
         timestamp scan_time
         string aws_profile
         string aws_region
-        string overall_status
+        timestamp created_at
     }
 
     resources {
@@ -87,13 +102,13 @@ erDiagram
         string resource_type
         string resource_id
         string region
-        jsonb raw_data
+        jsonb raw_json
     }
 
     findings {
         int id
         int resource_id
-        string check
+        string check_name
         string status
         string severity
         string message
@@ -109,6 +124,8 @@ erDiagram
 * Normalized PostgreSQL persistence
 * JSONB storage for raw AWS resource metadata
 * Human-readable Markdown reporting
+* Versioned, machine-readable JSON change events
+* Opt-in, count-based snapshot retention
 * Unit-tested rule evaluation
 * Redacted public example reports
 * Docker and Kubernetes execution support

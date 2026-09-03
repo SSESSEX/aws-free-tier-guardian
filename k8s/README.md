@@ -40,13 +40,14 @@ kubectl apply -f k8s/postgres-service.yaml
 kubectl apply -f k8s/scanner-cronjob.yaml
 ```
 
-The reports PVC preserves scanner reports, JSON snapshots, and Markdown diffs
-between Job Pods. PostgreSQL uses its own separate PVC.
+The reports PVC preserves scanner reports, JSON snapshots, Markdown diffs, and
+structured JSON diffs between Job Pods. PostgreSQL uses its own separate PVC.
 
-The CronJob keeps at most **672 snapshots and 672 Markdown diffs** for the
-default snapshot name after each successful batch. Older matching files are
-permanently deleted. This is roughly seven days at the 15-minute schedule, not
-a disk-size guarantee. PostgreSQL history is not pruned. Read the
+The CronJob keeps at most **672 snapshots, 672 Markdown diffs, and 672 JSON
+diffs** for the default snapshot name after each successful batch. Older
+matching files are permanently deleted. This is roughly seven days at the
+15-minute schedule, not a disk-size guarantee. PostgreSQL history is not
+pruned. Read the
 [retention policy](../docs/runbooks/batch-snapshot-monitoring.md#snapshot-retention)
 before enabling it, and follow the [update procedure](../docs/kubernetes-runbook.md#deploy-a-retention-update)
 to deploy the new image and manifest to an existing cluster.

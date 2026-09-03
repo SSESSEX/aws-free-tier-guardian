@@ -34,6 +34,7 @@ The scanner outputs:
 * JSON reports for machine-readable analysis
 * Markdown executive reports for human review
 * PostgreSQL records for historical scan storage
+* Timestamped snapshots with Markdown and structured JSON change reports
 * Risk summaries grouped by service, severity, and resource type
 
 ## Services Covered
@@ -49,6 +50,7 @@ The current scanner covers:
 * IAM access keys
 * CloudTrail
 * RDS
+* AWS Budgets
 
 ## Architecture
 
@@ -58,7 +60,9 @@ Each scanner collects AWS metadata using `boto3`.
 
 Each rule module evaluates the collected metadata and returns findings with statuses such as `PASS`, `WARN`, or `FAIL`.
 
-The combined scan runner builds a global summary, writes reports, and optionally persists scan results to PostgreSQL.
+The combined batch runner builds a global summary, optionally persists scan
+results to PostgreSQL, saves timestamped resource snapshots, and writes
+human-readable and machine-readable change reports.
 
 ## Technology Stack
 
@@ -219,6 +223,8 @@ The project currently demonstrates:
 * Docker-based local execution
 * Kubernetes Job and CronJob orchestration
 * PostgreSQL persistence
+* Deterministic snapshot comparison with versioned JSON change events
+* Count-based retention for scheduled file output
 * CI/CD validation
 * Security and redaction hygiene
 * Cost-safety awareness
@@ -232,7 +238,7 @@ Planned improvements include:
 * dbt Core transformation layer on PostgreSQL
 * PySpark batch analytics layer
 * Optional Snowflake-compatible modelling
-* Additional AWS scanner coverage such as Lambda or AWS Budgets
+* Additional AWS scanner coverage where it adds a defensible governance check
 * Deeper analytics over historical scan data
 
 ## Summary

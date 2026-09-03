@@ -151,9 +151,17 @@ def test_create_snapshot_from_guardian_report_file_writes_diff_on_second_snapsho
     assert result.diff_report.summary["changed_count"] == 2
 
     report_content = result.diff_report.report_path.read_text(encoding="utf-8")
+    json_content = json.loads(
+        result.diff_report.json_report_path.read_text(encoding="utf-8")
+    )
 
     assert "`s3:bucket:example-bucket` changed fields: `configuration`" in report_content
     assert "`s3:service_summary:summary` changed fields: `configuration`" in report_content
+    assert result.diff_report.json_report_path.name.endswith("-diff.json")
+    assert {change["resource_id"] for change in json_content["changes"]} == {
+        "s3:bucket:example-bucket",
+        "s3:service_summary:summary",
+    }
 
 
 def test_main_creates_snapshot_from_cli_args(tmp_path):

@@ -366,13 +366,22 @@ def test_main_applies_retention_after_diff_and_forwards_options(
         "portfolio-scan-20260803T210000Z.json",
     ]
     assert [path.name for path in sorted(report_dir.iterdir())] == [
+        "portfolio-scan-20260803T200000Z-diff.json",
         "portfolio-scan-20260803T200000Z-diff.md",
+        "portfolio-scan-20260803T210000Z-diff.json",
         "portfolio-scan-20260803T210000Z-diff.md",
     ]
     output = capsys.readouterr().out
     assert "Diff report written:" in output
-    assert "Retention: kept at most 2 snapshots and 2 diff reports" in output
-    assert "deleted snapshots=2, diff_reports=1." in output
+    assert "JSON diff report written:" in output
+    assert (
+        "Retention: kept at most 2 snapshots and 2 reports of each diff format"
+        in output
+    )
+    assert (
+        "deleted snapshots=2, markdown_diff_reports=1, json_diff_reports=1."
+        in output
+    )
 
 
 def test_first_batch_with_retention_keeps_its_baseline(tmp_path, monkeypatch):
@@ -394,6 +403,7 @@ def test_first_batch_with_retention_keeps_its_baseline(tmp_path, monkeypatch):
     assert result.snapshot_result.diff_report is None
     assert result.retention_result.deleted_snapshots == ()
     assert result.retention_result.deleted_reports == ()
+    assert result.retention_result.deleted_json_reports == ()
 
 
 @pytest.mark.parametrize("failure_stage", ["scanner", "missing-report", "snapshot", "diff"])
@@ -503,3 +513,4 @@ def test_main_returns_failure_when_retention_fails(tmp_path, monkeypatch, capsys
     assert "completed successfully" not in output.out
     assert len(list(snapshot_dir.glob("*.json"))) == 4
     assert len(list(report_dir.glob("*.md"))) == 3
+    assert len(list(report_dir.glob("*-diff.json"))) == 3

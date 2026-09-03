@@ -4,7 +4,7 @@ This module provides a small bridge between JSON scanner output and the
 snapshot/diff/report system.
 
 It reads a JSON file containing resources, saves a timestamped snapshot, and
-creates a diff report when at least two snapshots are available.
+creates Markdown and JSON diff reports when at least two snapshots are available.
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ from app.snapshots.store import (
 
 @dataclass(frozen=True)
 class SnapshotRunResult:
-    """Result from saving a snapshot and optionally creating a diff report."""
+    """Result from saving a snapshot and optionally creating diff reports."""
 
     snapshot_path: Path
     diff_report: SnapshotDiffReport | None
@@ -77,7 +77,7 @@ def create_snapshot_from_json_file(
     ignore_fields: set[str] | None = None,
     collected_at: datetime | None = None,
 ) -> SnapshotRunResult:
-    """Save a snapshot from a JSON file and optionally write a diff report."""
+    """Save a snapshot from a JSON file and optionally write diff reports."""
 
     resources = load_resources_from_json_file(input_path)
 
@@ -110,7 +110,7 @@ def _parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
             "Save a timestamped Guardian snapshot from JSON input and create "
-            "a diff report when a previous snapshot exists."
+            "diff reports when a previous snapshot exists."
         )
     )
 
@@ -181,6 +181,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         print("Diff report skipped: fewer than two snapshots are available.")
     else:
         print(f"Diff report written: {result.diff_report.report_path}")
+        print(f"JSON diff report written: {result.diff_report.json_report_path}")
 
     return 0
 
