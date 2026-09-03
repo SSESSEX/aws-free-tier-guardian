@@ -43,18 +43,32 @@ kubectl apply -f k8s/scanner-cronjob.yaml
 The reports PVC preserves scanner reports, JSON snapshots, and Markdown diffs
 between Job Pods. PostgreSQL uses its own separate PVC.
 
+The CronJob keeps at most **672 snapshots and 672 Markdown diffs** for the
+default snapshot name after each successful batch. Older matching files are
+permanently deleted. This is roughly seven days at the 15-minute schedule, not
+a disk-size guarantee. PostgreSQL history is not pruned. Read the
+[retention policy](../docs/runbooks/batch-snapshot-monitoring.md#snapshot-retention)
+before enabling it, and follow the [update procedure](../docs/kubernetes-runbook.md#deploy-a-retention-update)
+to deploy the new image and manifest to an existing cluster.
+
 ## Trigger a Manual Batch Run
+
+Suspend the CronJob and let running scanner Jobs finish before a manual run on
+the shared PVC. `concurrencyPolicy: Forbid` does not protect independent Jobs.
 
 ```bash
 kubectl -n aws-guardian create job manual-guardian-scan \
   --from=cronjob/aws-guardian-scan
 ```
 
-The Job runs the unified batch command with PostgreSQL persistence enabled:
+The Job inherits PostgreSQL persistence and retention from the CronJob:
 
 ```text
-python -m app.snapshots.run_guardian_batch --write-db
+python -m app.snapshots.run_guardian_batch --write-db --retention-count 672
 ```
+
+The separate `scanner-job.yaml` omits retention by default. Its files still
+share the PVC and remain eligible for cleanup by subsequent scheduled runs.
 
 ## View Scan Logs
 

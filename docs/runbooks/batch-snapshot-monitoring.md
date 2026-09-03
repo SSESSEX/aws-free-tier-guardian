@@ -29,6 +29,8 @@ reports/snapshots/aws-config-<timestamp>.json
 compare the latest two snapshots
         ↓
 reports/snapshot-diffs/aws-config-<timestamp>-diff.md
+        ↓
+optional count-based snapshot and diff retention
 ```
 
 The scanner report adapter converts the nested service report into a flat list
@@ -113,6 +115,14 @@ The wrapper also forwards the database option:
 ./scripts/run_guardian_batch.sh --write-db
 ```
 
+To opt into permanent cleanup of older generated history as well:
+
+```bash
+./scripts/run_guardian_batch.sh --write-db --retention-count 672
+```
+
+Review [Snapshot Retention](#snapshot-retention) before enabling this flag.
+
 The command runs these steps in order:
 
 1. Run `app.scanner.run_all` as a subprocess.
@@ -123,9 +133,15 @@ The command runs these steps in order:
 5. Save a timestamped JSON snapshot.
 6. Load the latest and previous snapshots when both exist.
 7. Write a Markdown diff report.
+8. If `--retention-count N` was supplied, keep at most the newest N snapshots
+   and N Markdown diffs for the selected snapshot name.
 
 PostgreSQL persistence is opt-in. It does not change the file-based snapshot or
 diff behavior.
+
+Retention is also opt-in and runs only after these earlier steps succeed. A
+first successful run with no previous snapshot is still eligible for cleanup;
+its baseline is kept.
 
 ## Expected Output
 
@@ -251,6 +267,72 @@ current state violates a governance or cost-safety rule.
 Review added, removed, and changed resources first. If a change is unexpected,
 confirm it in AWS using the same read-only profile before taking any action.
 
+## Snapshot Retention
+
+By default, local runs do not prune history. Enable a limit explicitly:
+
+```bash
+python -m app.snapshots.run_guardian_batch --retention-count 672
+```
+
+The count must be an integer of at least **2**, preserving the latest two
+snapshots for comparison. Each directory is capped independently. Files are
+ordered by their UTC filename timestamp, not filesystem modification time.
+
+Cleanup matches only these exact formats for the selected `--snapshot-name`
+(default `aws-config`):
+
+```text
+reports/snapshots/aws-config-YYYYMMDDTHHMMSSZ.json
+reports/snapshot-diffs/aws-config-YYYYMMDDTHHMMSSZ-diff.md
+```
+
+The timestamp must be a valid date and time. With custom `--snapshot-dir` or
+`--report-dir`, the same filename rules apply in those directories. Only direct
+regular files are considered: unrelated files, other snapshot names, examples,
+temporary files, malformed timestamps, subdirectories, and file symlinks are
+not deleted or counted. A directory that is itself a symlink is rejected.
+
+After a successful run, logs include a line such as:
+
+```text
+Retention: kept at most 672 snapshots and 672 diff reports; deleted snapshots=3, diff_reports=3.
+```
+
+Zero deletions is normal when history is below the cap. Omitting the flag means
+no cleanup and no retention log line. Scanner, PostgreSQL, snapshot, or diff
+failures skip cleanup. Filesystem cleanup errors make the command fail rather
+than report success; deletions already completed are not rolled back.
+
+**Deletion is permanent.** Back up history privately before enabling retention
+if it must be kept. The first successful run can delete existing history above
+the cap. Retention does not archive files or offer recovery without a backup.
+The oldest retained diff may reference an older snapshot that was pruned; the
+report stays readable, but reproducing that comparison requires both snapshots.
+
+### Scheduled Kubernetes policy
+
+The CronJob supplies `--write-db --retention-count 672`. At one successful run
+every 15 minutes, that is approximately seven days of history (96 runs/day).
+Extra manual runs shorten that window; missed runs lengthen it. This is a
+file-count policy, not an age policy or a guarantee of staying below 1 GiB.
+Larger snapshots and unrelated output still require disk-usage monitoring.
+
+Manual Jobs created **from the CronJob** inherit its retention flag. The
+standalone `k8s/scanner-job.yaml` does not enable retention, but its generated
+files share the same PVC and can be pruned by the next scheduled run.
+
+Kubernetes Job history limits remove Job objects, not report files. `Forbid`
+coordinates runs started by the same CronJob; it is not a filesystem lock for
+independent manual Jobs. Before manual testing, suspend the CronJob and wait
+for running scanner Jobs to finish. Do not run multiple writers against these
+directories. See the [Kubernetes CronJob documentation](https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/#concurrency-policy)
+and the [deployment runbook](../kubernetes-runbook.md#deploy-a-retention-update).
+
+Retention does **not** delete the current scanner JSON/Markdown reports,
+PostgreSQL rows, Kubernetes Jobs, or PVCs. Database retention remains a separate
+policy decision.
+
 ## Why Reports Are Not Committed
 
 The repository ignores `/reports/` because generated output can contain:
@@ -346,17 +428,34 @@ service shape, or an account that genuinely has no resources of that type.
 
 Do not commit the report while investigating.
 
+### Retention fails or disk space is exhausted
+
+Check that the count is at least 2 and the configured directories are writable
+real directories, not symlinks. Cleanup runs after the batch succeeds, so it
+cannot rescue a volume that is already too full to write a snapshot or diff.
+Suspend scheduled runs, inspect usage and preserve any required history before
+performing a targeted manual cleanup or adding capacity. Do not delete the PVC
+as a shortcut; that removes the entire report history.
+
+Verify the retention implementation without live AWS, PostgreSQL, or private
+reports:
+
+```bash
+python -m pytest tests/test_snapshot_retention.py \
+  tests/test_guardian_batch_runner.py \
+  tests/test_kubernetes_batch_manifests.py -q
+```
+
 ## Next Improvements
 
 Keep subsequent changes small and testable. Suitable next steps are:
 
-1. Define a retention policy so scheduled snapshots cannot fill the reports
-   PVC indefinitely.
-2. Add structured JSON diff output only when a machine-readable consumer needs
+1. Add structured JSON diff output only when a machine-readable consumer needs
    it.
-3. Persist resource-change history when historical diff queries become a real
+2. Persist resource-change history when historical diff queries become a real
    requirement.
-4. Add monitoring for failed scheduled batch Jobs.
+3. Add monitoring for failed scheduled batch Jobs and report-volume usage.
+4. Define a separate PostgreSQL history-retention policy.
 
 Event-driven monitoring remains a future extension. The current honest project
 description is **batch governance monitoring tool**.

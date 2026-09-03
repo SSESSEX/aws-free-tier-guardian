@@ -7,6 +7,7 @@ It is the first end-to-end batch automation entry point. PostgreSQL persistence
 can be enabled explicitly and remains disabled by default:
 
 scan -> report JSON -> optional PostgreSQL -> snapshot -> diff -> Markdown report
+     -> optional retention cleanup
 """
 
 from __future__ import annotations
@@ -24,6 +25,11 @@ from app.snapshots.guardian_report import (
     create_snapshot_from_guardian_report_file,
 )
 from app.snapshots.report import DEFAULT_DIFF_REPORT_DIR
+from app.snapshots.retention import (
+    SnapshotRetentionResult,
+    prune_snapshot_history,
+    validate_retention_count,
+)
 from app.snapshots.store import DEFAULT_SNAPSHOT_DIR, DEFAULT_SNAPSHOT_NAME
 
 
@@ -37,6 +43,7 @@ class GuardianBatchRunResult:
     scanner_exit_code: int
     scanner_report_path: Path
     snapshot_result: GuardianSnapshotResult
+    retention_result: SnapshotRetentionResult | None = None
 
 
 def run_guardian_scanner(
@@ -69,12 +76,18 @@ def run_guardian_batch(
     snapshot_name: str = DEFAULT_SNAPSHOT_NAME,
     python_executable: str = sys.executable,
     write_db: bool = False,
+    retention_count: int | None = None,
 ) -> GuardianBatchRunResult:
     """Run the scanner and create a timestamped snapshot from its JSON report.
 
     When write_db is true, the scanner also persists its existing scan, resource,
     and finding records to PostgreSQL before snapshot processing continues.
+    Retention is disabled unless a count is supplied, and runs only after
+    snapshot and diff processing succeeds.
     """
+
+    if retention_count is not None:
+        validate_retention_count(retention_count)
 
     scanner_result = run_guardian_scanner(
         scanner_module=scanner_module,
@@ -105,11 +118,33 @@ def run_guardian_batch(
         snapshot_name=snapshot_name,
     )
 
+    retention_result = None
+    if retention_count is not None:
+        retention_result = prune_snapshot_history(
+            retention_count=retention_count,
+            snapshot_dir=snapshot_dir,
+            report_dir=report_dir,
+            snapshot_name=snapshot_name,
+        )
+
     return GuardianBatchRunResult(
         scanner_exit_code=scanner_result.returncode,
         scanner_report_path=report_path,
         snapshot_result=snapshot_result,
+        retention_result=retention_result,
     )
+
+
+def _retention_count_arg(value: str) -> int:
+    try:
+        count = int(value)
+        validate_retention_count(count)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(
+            "retention count must be an integer of at least 2"
+        ) from exc
+
+    return count
 
 
 def _parse_args(argv: Sequence[str]) -> argparse.Namespace:
@@ -130,6 +165,17 @@ def _parse_args(argv: Sequence[str]) -> argparse.Namespace:
         "--write-db",
         action="store_true",
         help="Persist scanner results to PostgreSQL before snapshot processing.",
+    )
+
+    parser.add_argument(
+        "--retention-count",
+        type=_retention_count_arg,
+        metavar="N",
+        help=(
+            "After a successful run, permanently delete older generated files "
+            "to keep at most N snapshots and N Markdown diffs (minimum 2). "
+            "Disabled when omitted."
+        ),
     )
 
     parser.add_argument(
@@ -172,6 +218,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             report_dir=args.report_dir,
             snapshot_name=args.snapshot_name,
             write_db=args.write_db,
+            retention_count=args.retention_count,
         )
     except Exception as exc:
         print(f"Error: {exc}", file=sys.stderr)
@@ -192,6 +239,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         print("Diff report skipped: fewer than two snapshots are available.")
     else:
         print(f"Diff report written: {snapshot_result.diff_report.report_path}")
+
+    if result.retention_result is not None:
+        print(
+            f"Retention: kept at most {args.retention_count} snapshots and "
+            f"{args.retention_count} diff reports; deleted "
+            f"snapshots={len(result.retention_result.deleted_snapshots)}, "
+            f"diff_reports={len(result.retention_result.deleted_reports)}."
+        )
 
     return 0
 

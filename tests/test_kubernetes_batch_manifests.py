@@ -45,6 +45,20 @@ def test_scanner_cronjob_prevents_overlapping_snapshot_runs():
     assert "concurrencyPolicy: Forbid" in manifest
 
 
+def test_scanner_cronjob_enables_bounded_snapshot_retention():
+    manifest = (KUBERNETES_DIR / "scanner-cronjob.yaml").read_text(
+        encoding="utf-8"
+    )
+
+    assert re.search(r'- --retention-count\s*- "672"', manifest)
+
+
+def test_standalone_job_does_not_enable_retention_implicitly():
+    manifest = (KUBERNETES_DIR / "scanner-job.yaml").read_text(encoding="utf-8")
+
+    assert "--retention-count" not in manifest
+
+
 def test_reports_pvc_is_separate_from_postgres_storage():
     reports_pvc = (KUBERNETES_DIR / "reports-pvc.yaml").read_text(
         encoding="utf-8"

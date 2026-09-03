@@ -33,6 +33,7 @@ The scanner produces:
 * Markdown executive reports
 * Timestamped JSON snapshots
 * Markdown snapshot diff reports
+* Optional count-based snapshot and diff retention
 * PostgreSQL persistence
 * Global risk summaries
 * Service-level findings
@@ -43,7 +44,7 @@ The scanner produces:
 Current test coverage:
 
 ```text
-206 passing tests
+252 passing tests
 ```
 
 ---
@@ -157,6 +158,17 @@ Run the unified pipeline and also persist scan data to PostgreSQL:
 ./scripts/run_guardian_batch.sh --write-db
 ```
 
+Opt into cleanup after a successful batch, keeping at most 672 snapshots and
+672 Markdown diffs:
+
+```bash
+./scripts/run_guardian_batch.sh --write-db --retention-count 672
+```
+
+Older matching files are permanently deleted. The count must be at least 2;
+omitting the flag leaves local history untouched. See the
+[retention policy](docs/runbooks/batch-snapshot-monitoring.md#snapshot-retention).
+
 Run tests locally:
 
 ```bash
@@ -234,7 +246,15 @@ kubectl apply -f k8s/postgres-service.yaml
 kubectl apply -f k8s/scanner-cronjob.yaml
 ```
 
-Trigger a manual unified batch run from the CronJob:
+The CronJob enables `--write-db --retention-count 672`, retaining roughly seven
+days of snapshots and diffs at the 15-minute schedule. This limits file counts,
+not storage bytes, and does not prune PostgreSQL. To update an existing cluster,
+follow the [retention deployment runbook](docs/kubernetes-runbook.md#deploy-a-retention-update).
+
+Before a manual run, suspend scheduled scans and wait for active scanner Jobs
+to finish; independently created Jobs are not covered by the CronJob's
+concurrency policy. Then trigger a manual unified batch run (it inherits the
+retention flag):
 
 ```bash
 kubectl -n aws-guardian create job manual-guardian-scan \
@@ -273,6 +293,8 @@ Current test areas include:
 * RDS rules
 * Global scan summary generation
 * Markdown report generation
+* Snapshot storage, comparison, and safe count-based retention
+* Unified batch CLI, shell wrapper, and Kubernetes manifest contracts
 
 Run all tests:
 

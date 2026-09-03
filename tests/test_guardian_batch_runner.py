@@ -259,3 +259,247 @@ def test_main_write_db_flag_is_forwarded_to_scanner(tmp_path, monkeypatch):
 
     assert exit_code == 0
     assert captured["command"][-1] == "--write-db"
+
+
+def _seed_batch_history(tmp_path, monkeypatch, *, snapshot_name="aws-config"):
+    report_path = tmp_path / "aws_guardian_report.json"
+    snapshot_dir = tmp_path / "snapshots"
+    report_dir = tmp_path / "diffs"
+    _write_sample_guardian_report(report_path)
+
+    for hour in (18, 19, 20):
+        create_snapshot_from_guardian_report_file(
+            report_path,
+            snapshot_dir=snapshot_dir,
+            report_dir=report_dir,
+            snapshot_name=snapshot_name,
+            collected_at=datetime(2026, 8, 3, hour, tzinfo=timezone.utc),
+        )
+
+    def create_at_fixed_time(*args, **kwargs):
+        return create_snapshot_from_guardian_report_file(
+            *args,
+            **kwargs,
+            collected_at=datetime(2026, 8, 3, 21, tzinfo=timezone.utc),
+        )
+
+    monkeypatch.setattr(
+        "app.snapshots.run_guardian_batch.create_snapshot_from_guardian_report_file",
+        create_at_fixed_time,
+    )
+    return report_path, snapshot_dir, report_dir
+
+
+def test_batch_retention_is_disabled_by_default(tmp_path, monkeypatch):
+    report_path, snapshot_dir, report_dir = _seed_batch_history(tmp_path, monkeypatch)
+
+    def unexpected_cleanup(**kwargs):
+        pytest.fail("retention must be explicitly enabled")
+
+    monkeypatch.setattr(
+        "app.snapshots.run_guardian_batch.prune_snapshot_history", unexpected_cleanup
+    )
+    monkeypatch.setattr(
+        "app.snapshots.run_guardian_batch.run_guardian_scanner",
+        lambda **kwargs: subprocess.CompletedProcess([], 0, "", ""),
+    )
+
+    result = run_guardian_batch(
+        scanner_report_path=report_path,
+        snapshot_dir=snapshot_dir,
+        report_dir=report_dir,
+    )
+
+    assert result.retention_result is None
+    assert len(list(snapshot_dir.glob("*.json"))) == 4
+    assert len(list(report_dir.glob("*.md"))) == 3
+
+
+def test_main_applies_retention_after_diff_and_forwards_options(
+    tmp_path, monkeypatch, capsys
+):
+    from app.snapshots.retention import prune_snapshot_history
+
+    report_path, snapshot_dir, report_dir = _seed_batch_history(
+        tmp_path, monkeypatch, snapshot_name="Portfolio_Scan"
+    )
+    captured = {}
+
+    def fake_run(command, **kwargs):
+        captured["scanner_command"] = command
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    def checked_cleanup(**kwargs):
+        # All four snapshots and the new diff must exist before cleanup starts.
+        assert len(list(snapshot_dir.glob("*.json"))) == 4
+        assert (report_dir / "portfolio-scan-20260803T210000Z-diff.md").is_file()
+        captured["cleanup_options"] = kwargs
+        return prune_snapshot_history(**kwargs)
+
+    monkeypatch.setattr("app.snapshots.run_guardian_batch.subprocess.run", fake_run)
+    monkeypatch.setattr(
+        "app.snapshots.run_guardian_batch.prune_snapshot_history", checked_cleanup
+    )
+
+    exit_code = main(
+        [
+            "--write-db",
+            "--retention-count", "2",
+            "--snapshot-name", "Portfolio_Scan",
+            "--scanner-report-path", str(report_path),
+            "--snapshot-dir", str(snapshot_dir),
+            "--report-dir", str(report_dir),
+        ]
+    )
+
+    assert exit_code == 0
+    assert captured["scanner_command"][-1] == "--write-db"
+    assert "--retention-count" not in captured["scanner_command"]
+    assert captured["cleanup_options"] == {
+        "retention_count": 2,
+        "snapshot_dir": str(snapshot_dir),
+        "report_dir": str(report_dir),
+        "snapshot_name": "Portfolio_Scan",
+    }
+    assert [path.name for path in sorted(snapshot_dir.iterdir())] == [
+        "portfolio-scan-20260803T200000Z.json",
+        "portfolio-scan-20260803T210000Z.json",
+    ]
+    assert [path.name for path in sorted(report_dir.iterdir())] == [
+        "portfolio-scan-20260803T200000Z-diff.md",
+        "portfolio-scan-20260803T210000Z-diff.md",
+    ]
+    output = capsys.readouterr().out
+    assert "Diff report written:" in output
+    assert "Retention: kept at most 2 snapshots and 2 diff reports" in output
+    assert "deleted snapshots=2, diff_reports=1." in output
+
+
+def test_first_batch_with_retention_keeps_its_baseline(tmp_path, monkeypatch):
+    report_path = tmp_path / "aws_guardian_report.json"
+    _write_sample_guardian_report(report_path)
+    monkeypatch.setattr(
+        "app.snapshots.run_guardian_batch.run_guardian_scanner",
+        lambda **kwargs: subprocess.CompletedProcess([], 0, "", ""),
+    )
+
+    result = run_guardian_batch(
+        scanner_report_path=report_path,
+        snapshot_dir=tmp_path / "snapshots",
+        report_dir=tmp_path / "diffs",
+        retention_count=2,
+    )
+
+    assert result.snapshot_result.snapshot_path.is_file()
+    assert result.snapshot_result.diff_report is None
+    assert result.retention_result.deleted_snapshots == ()
+    assert result.retention_result.deleted_reports == ()
+
+
+@pytest.mark.parametrize("failure_stage", ["scanner", "missing-report", "snapshot", "diff"])
+def test_batch_failures_never_prune_existing_history(
+    tmp_path, monkeypatch, failure_stage
+):
+    report_path, snapshot_dir, report_dir = _seed_batch_history(tmp_path, monkeypatch)
+    history = {
+        path: path.read_bytes()
+        for directory in (snapshot_dir, report_dir)
+        for path in directory.iterdir()
+    }
+
+    def unexpected_cleanup(**kwargs):
+        pytest.fail("cleanup must not run after a batch failure")
+
+    monkeypatch.setattr(
+        "app.snapshots.run_guardian_batch.prune_snapshot_history", unexpected_cleanup
+    )
+    monkeypatch.setattr(
+        "app.snapshots.run_guardian_batch.run_guardian_scanner",
+        lambda **kwargs: subprocess.CompletedProcess(
+            [], 1 if failure_stage == "scanner" else 0, "", ""
+        ),
+    )
+
+    def fail_artifact(*args, **kwargs):
+        raise OSError(f"{failure_stage} write failed")
+
+    if failure_stage == "missing-report":
+        report_path.unlink()
+    elif failure_stage == "snapshot":
+        monkeypatch.setattr("app.snapshots.guardian_report.save_snapshot", fail_artifact)
+    elif failure_stage == "diff":
+        monkeypatch.setattr(
+            "app.snapshots.guardian_report.create_latest_snapshot_diff_report",
+            fail_artifact,
+        )
+
+    with pytest.raises((RuntimeError, FileNotFoundError, OSError)):
+        run_guardian_batch(
+            scanner_report_path=report_path,
+            snapshot_dir=snapshot_dir,
+            report_dir=report_dir,
+            retention_count=2,
+        )
+
+    for path, contents in history.items():
+        assert path.read_bytes() == contents
+
+
+@pytest.mark.parametrize("retention_count", [0, 1, -1, True, 2.5, "2"])
+def test_batch_rejects_invalid_retention_before_scanning(monkeypatch, retention_count):
+    def unexpected_scanner(**kwargs):
+        pytest.fail("invalid retention must fail before any AWS or database work")
+
+    monkeypatch.setattr(
+        "app.snapshots.run_guardian_batch.run_guardian_scanner", unexpected_scanner
+    )
+
+    with pytest.raises(ValueError, match="integer of at least 2"):
+        run_guardian_batch(retention_count=retention_count)
+
+
+@pytest.mark.parametrize("value", ["0", "1", "-1", "2.5", "invalid"])
+def test_main_rejects_invalid_retention_arguments(monkeypatch, capsys, value):
+    def unexpected_scanner(**kwargs):
+        pytest.fail("invalid CLI input must not trigger a scan")
+
+    monkeypatch.setattr(
+        "app.snapshots.run_guardian_batch.run_guardian_scanner", unexpected_scanner
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["--retention-count", value])
+
+    assert exc_info.value.code == 2
+    assert "retention count must be an integer of at least 2" in capsys.readouterr().err
+
+
+def test_main_returns_failure_when_retention_fails(tmp_path, monkeypatch, capsys):
+    report_path, snapshot_dir, report_dir = _seed_batch_history(tmp_path, monkeypatch)
+    monkeypatch.setattr(
+        "app.snapshots.run_guardian_batch.run_guardian_scanner",
+        lambda **kwargs: subprocess.CompletedProcess([], 0, "", ""),
+    )
+
+    def fail_cleanup(**kwargs):
+        raise PermissionError("retention cleanup denied")
+
+    monkeypatch.setattr(
+        "app.snapshots.run_guardian_batch.prune_snapshot_history", fail_cleanup
+    )
+
+    exit_code = main(
+        [
+            "--retention-count", "2",
+            "--scanner-report-path", str(report_path),
+            "--snapshot-dir", str(snapshot_dir),
+            "--report-dir", str(report_dir),
+        ]
+    )
+
+    assert exit_code == 1
+    output = capsys.readouterr()
+    assert "retention cleanup denied" in output.err
+    assert "completed successfully" not in output.out
+    assert len(list(snapshot_dir.glob("*.json"))) == 4
+    assert len(list(report_dir.glob("*.md"))) == 3

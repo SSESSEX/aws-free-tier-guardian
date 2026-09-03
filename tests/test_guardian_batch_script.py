@@ -67,7 +67,7 @@ def test_batch_script_uses_project_venv_and_forwards_arguments(tmp_path):
         script_path,
         cwd=outside_directory,
         capture_path=capture_path,
-        args=["--snapshot-name", "portfolio-scan"],
+        args=["--snapshot-name", "portfolio-scan", "--retention-count", "672"],
     )
 
     assert result.returncode == 0
@@ -77,6 +77,8 @@ def test_batch_script_uses_project_venv_and_forwards_arguments(tmp_path):
         "arg=app.snapshots.run_guardian_batch",
         "arg=--snapshot-name",
         "arg=portfolio-scan",
+        "arg=--retention-count",
+        "arg=672",
     ]
     assert f"Project root: {project_root}" in result.stdout
     assert f"Python: {fake_python}" in result.stdout

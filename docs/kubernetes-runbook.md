@@ -152,11 +152,16 @@ Apply the separate reports PVC:
 kubectl apply -f k8s/reports-pvc.yaml
 ```
 
-Confirm that both database and report storage are bound:
+Check both database and report storage:
 
 ```bash
 kubectl -n aws-guardian get pvc
 ```
+
+If the reports claim is `Pending` and its StorageClass uses
+`WaitForFirstConsumer`, create the first scanner Job before expecting `Bound`.
+Provisioning waits for a Pod that uses the claim. This is expected behavior,
+not a reason to delete the PVC. See [volume binding mode](https://kubernetes.io/docs/concepts/storage/storage-classes/#volume-binding-mode).
 
 The scanner workloads mount `guardian-reports-pvc` at `/app/reports`. This
 preserves scanner reports, timestamped JSON snapshots, and Markdown diff
@@ -207,9 +212,22 @@ Apply CronJob:
 kubectl apply -f k8s/scanner-cronjob.yaml
 ```
 
-The CronJob uses the same unified batch command as the one-off Job. Its
-`Forbid` concurrency policy prevents overlapping runs from writing snapshots
-to the reports PVC simultaneously.
+The CronJob adds explicit file retention to the unified command:
+
+```text
+python -m app.snapshots.run_guardian_batch --write-db --retention-count 672
+```
+
+After a successful batch it permanently deletes older matching files to retain
+at most 672 timestamped snapshots and 672 Markdown diffs. At the configured
+15-minute cadence this is approximately seven days, not an exact age window
+or byte limit. PostgreSQL records and current scanner reports are untouched.
+Back up required history privately before enabling this policy. For details,
+see [Snapshot Retention](runbooks/batch-snapshot-monitoring.md#snapshot-retention).
+
+The `Forbid` policy prevents overlap among this CronJob's scheduled Jobs. It
+does not serialize independently created manual Jobs: suspend scheduling and
+wait for active scanner Jobs to finish before any manual run on the shared PVC.
 
 Check CronJob:
 
@@ -217,7 +235,7 @@ Check CronJob:
 kubectl -n aws-guardian get cronjobs
 ```
 
-Create manual Job from CronJob:
+Create a manual Job from the CronJob (including its retention setting):
 
 ```bash
 kubectl -n aws-guardian create job manual-guardian-scan \
@@ -249,6 +267,60 @@ Resume scheduled scans:
 kubectl -n aws-guardian patch cronjob aws-guardian-scan \
   -p '{"spec":{"suspend":false}}'
 ```
+
+## Deploy a retention update
+
+This updates an existing local kind deployment. It does not rotate credentials,
+alter PostgreSQL data, or recreate PVCs. The first retention-enabled run can
+remove old report history above the configured count; back up anything needed.
+
+Suspend future runs and inspect existing Jobs:
+
+```bash
+kubectl -n aws-guardian patch cronjob aws-guardian-scan \
+  -p '{"spec":{"suspend":true}}'
+kubectl -n aws-guardian get jobs
+```
+
+Wait for any active scanner Jobs to finish before continuing. Suspension does
+not stop Jobs that are already running.
+
+Rebuild and load the image **before** applying the new flag:
+
+```bash
+docker build -t aws-free-tier-guardian-scanner:local .
+kind load docker-image aws-free-tier-guardian-scanner:local --name aws-guardian
+kubectl apply -f k8s/scanner-cronjob.yaml
+```
+
+Keep scheduling suspended during one manual verification:
+
+```bash
+kubectl -n aws-guardian patch cronjob aws-guardian-scan \
+  -p '{"spec":{"suspend":true}}'
+kubectl -n aws-guardian create job guardian-retention-check \
+  --from=cronjob/aws-guardian-scan
+kubectl -n aws-guardian wait --for=condition=complete \
+  job/guardian-retention-check --timeout=180s
+kubectl -n aws-guardian logs job/guardian-retention-check
+```
+
+Expect a successful batch and a `Retention:` line. Counts of zero are correct
+when fewer than 673 eligible files exist. Do not lower the count on real history
+just to test deletion; the unit tests exercise pruning using temporary files.
+If the Job fails, inspect its logs and leave scheduling suspended until resolved.
+
+After verification, remove only the temporary Job and resume scheduling:
+
+```bash
+kubectl -n aws-guardian delete job guardian-retention-check
+kubectl -n aws-guardian patch cronjob aws-guardian-scan \
+  -p '{"spec":{"suspend":false}}'
+```
+
+Deleting the temporary Job does not delete retained PVC files. To disable
+automatic file cleanup, remove both `--retention-count` and its value from the
+CronJob manifest, then reapply it. Already-pruned files are not restored.
 
 ## Cleanup
 
